@@ -15,11 +15,17 @@ JAGGER = "#370E62"
 DASHING_YELLOW = "#F5C300"
 FLAMBOYANT_PINK = "#B6007D"
 
-DARK_BG = "#111111"
-CARD_BG = "#1f1f1f"
-PLOT_BG = "#303030"
+DARK_BG = "#FFFFFF"
+CARD_BG = "#FFFFFF"
+PLOT_BG = "#FFFFFF"
+PAGE_BG = "#FFFFFF"
+SIDEBAR_BG = "#FFFFFF"
+TEXT_MAIN = "#111827"
+TEXT_MUTED = "#6B7280"
+BORDER = "#E5E7EB"
+CARD_SHADOW = "0 12px 30px rgba(17, 24, 39, 0.08)"
 
-GREEN_GOOD = "#39D353"
+GREEN_GOOD = "#16A34A"
 ORANGE_LOW = "#ED7D31"
 
 MONTH_NAME = {
@@ -42,12 +48,75 @@ MONTH_ORDER = [
     "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
 ]
 
+# Required display/order for complaint and satisfaction sections.
+# Internal normalized topic names are kept stable for data matching.
+ALLOWED_COMPLAINT_TOPICS = [
+    "Check-in",
+    "Lounge",
+    "Boarding",
+    "Cabin Cleanliness",
+    "Lavatory Dirty",
+    "In-flight Meal",
+    "In-flight Beverage",
+    "Arrival & Baggage",
+    "Irregularity",
+]
+
+RAW_COMPLAINT_TOPIC_ALLOWLIST = [
+    "Check-in",
+    "Lounge",
+    "Cabin Cleanliness",
+    "Inflight Meal (DC double catering)",
+    "In-flight Beverage",
+    "Arrival & Baggage Handling",
+    "Irregularity Handling",
+    "Boarding",
+    "Lavatory Dirty",
+]
+
+# Rating trend shows only these touchpoints.
+# Some source files use slightly different names, so we normalize before filtering.
+ALLOWED_RATING_TREND_TOPICS = [
+    "Check-in",
+    "Lounge",
+    "Boarding",
+    "Cabin Cleanliness",
+    "Lavatory Dirty",
+    "In-flight Meal",
+    "In-flight Beverage",
+    "Arrival & Baggage",
+    "Irregularity",
+]
+
+TOPIC_TICK_LABELS = {
+    "Check-in": "Check-in",
+    "Lounge": "Lounge",
+    "Boarding": "Boarding",
+    "Cabin Cleanliness": "Cabin<br>Cleanliness",
+    "Lavatory Dirty": "Lavatory Dirty",
+    "In-flight Meal": "In-flight<br>Meal",
+    "In-flight Beverage": "In-flight<br>Beverage",
+    "Arrival & Baggage": "Arrival Baggage<br>Handling",
+    "Irregularity": "Irregularity<br>Handling",
+}
+
+CLASS_CARD_STYLE = {
+    "First Class": {"short": "F", "bg": "#FFE38A", "fg": "#111827", "icon": "👑"},
+    "Business Class": {"short": "BC", "bg": "#7030A0", "fg": "#FFFFFF", "icon": "💼"},
+    "Economy Plus": {"short": "EY Plus", "bg": "#B6007D", "fg": "#FFFFFF", "icon": "✨"},
+    "Economy Class": {"short": "EY", "bg": "#C000A0", "fg": "#FFFFFF", "icon": "🧳"},
+}
+
 
 # -----------------------------
 # STATION COORDINATES
 # -----------------------------
 STATION_COORDINATES = [
     {"Station": "Bangkok", "Latitude": 13.6900, "Longitude": 100.7501},
+    {"Station": "UTAPAO", "Latitude": 12.6799, "Longitude": 101.0050},
+    {"Station": "U-Tapao", "Latitude": 12.6799, "Longitude": 101.0050},
+    {"Station": "U Tapao", "Latitude": 12.6799, "Longitude": 101.0050},
+    {"Station": "U-Tapao Rayong Pattaya", "Latitude": 12.6799, "Longitude": 101.0050},
     {"Station": "Chiang Mai", "Latitude": 18.7668, "Longitude": 98.9626},
     {"Station": "Chiang Rai", "Latitude": 19.9523, "Longitude": 99.8829},
     {"Station": "Hat Yai", "Latitude": 6.9332, "Longitude": 100.3929},
@@ -175,61 +244,414 @@ st.set_page_config(
 # -----------------------------
 # CUSTOM CSS
 # -----------------------------
-css = """
+css = r"""
 <style>
-.stApp {
-    background-color: COLOR_DARK_BG;
-    color: white;
+:root {
+    --jagger: {JAGGER};
+    --yellow: {DASHING_YELLOW};
+    --pink: {FLAMBOYANT_PINK};
+    --text-main: {TEXT_MAIN};
+    --text-muted: {TEXT_MUTED};
+    --border: {BORDER};
+}
+
+html, body, [data-testid="stAppViewContainer"], .stApp {
+    background: {PAGE_BG} !important;
+    color: {TEXT_MAIN} !important;
+    font-family: "Segoe UI", "Inter", "Arial", sans-serif !important;
+}
+
+[data-testid="stHeader"] {
+    background: rgba(255, 255, 255, 0.92) !important;
+    backdrop-filter: blur(10px);
+    border-bottom: 1px solid {BORDER};
 }
 
 section[data-testid="stSidebar"] {
-    background-color: COLOR_JAGGER;
+    background: {SIDEBAR_BG} !important;
+    border-right: 1px solid {BORDER};
+}
+
+section[data-testid="stSidebar"] * {
+    color: {TEXT_MAIN} !important;
 }
 
 .block-container {
-    padding-top: 2rem;
-    padding-left: 3rem;
-    padding-right: 3rem;
+    padding-top: 2.2rem;
+    padding-left: clamp(1rem, 2.5vw, 3.2rem);
+    padding-right: clamp(1rem, 2.5vw, 3.2rem);
+    padding-bottom: 4rem;
+    max-width: 100% !important;
+    width: 100% !important;
 }
 
+h1 {
+    color: {TEXT_MAIN} !important;
+    font-size: 3.1rem !important;
+    line-height: 1.08 !important;
+    font-weight: 850 !important;
+    letter-spacing: -0.03em !important;
+    margin-bottom: 0.5rem !important;
+}
+
+h2, h3 {
+    color: {TEXT_MAIN} !important;
+    font-weight: 800 !important;
+    letter-spacing: -0.02em !important;
+}
+
+h2 { font-size: 2.25rem !important; margin-top: 2.2rem !important; }
+h3 { font-size: 1.75rem !important; margin-top: 1.8rem !important; }
+
+p, span, div, label {
+    font-size: 1.02rem;
+}
+
+[data-testid="stCaptionContainer"] {
+    color: {TEXT_MUTED} !important;
+    font-size: 1.05rem !important;
+}
+
+/* Premium metric cards for st.metric */
 div[data-testid="stMetric"] {
-    background-color: COLOR_CARD_BG;
-    border-radius: 14px;
-    padding: 18px;
-    border: 1px solid #333333;
+    background: linear-gradient(180deg, #FFFFFF 0%, #FCFCFD 100%);
+    border-radius: 20px;
+    padding: 22px 22px;
+    border: 1px solid {BORDER};
+    box-shadow: {CARD_SHADOW};
+    min-height: 132px;
 }
 
-div[data-testid="stMetricLabel"] {
-    color: #d9d9d9;
+div[data-testid="stMetricLabel"] p {
+    color: {TEXT_MUTED} !important;
+    font-size: 1.02rem !important;
+    font-weight: 750 !important;
 }
 
-div[data-testid="stMetricValue"] {
-    color: COLOR_DASHING_YELLOW;
-    font-size: 30px;
+div[data-testid="stMetricValue"] div {
+    color: {JAGGER} !important;
+    font-size: 2.05rem !important;
+    font-weight: 850 !important;
+    letter-spacing: -0.03em !important;
 }
 
-h1, h2, h3 {
-    color: white;
+div[data-testid="stMetricDelta"] div {
+    font-size: 1rem !important;
+    font-weight: 700 !important;
+}
+
+.premium-card {
+    background: linear-gradient(180deg, #FFFFFF 0%, #FCFCFD 100%);
+    border: 1px solid {BORDER};
+    border-radius: 22px;
+    padding: 22px 24px;
+    box-shadow: {CARD_SHADOW};
+    min-height: 140px;
+}
+
+.premium-label {
+    color: {TEXT_MUTED} !important;
+    font-size: 1.02rem !important;
+    font-weight: 750 !important;
+    margin-bottom: 8px;
+}
+
+.premium-value {
+    color: {JAGGER} !important;
+    font-size: 2.05rem !important;
+    line-height: 1.15 !important;
+    font-weight: 850 !important;
+    letter-spacing: -0.03em !important;
+    word-break: break-word;
+}
+
+.premium-delta {
+    margin-top: 10px;
+    font-size: 1rem !important;
+    font-weight: 800 !important;
+}
+
+/* Filters: white background + black text */
+.stMultiSelect div[data-baseweb="select"] > div,
+.stSelectbox div[data-baseweb="select"] > div {
+    background-color: #FFFFFF !important;
+    color: {TEXT_MAIN} !important;
+    border: 1.5px solid {BORDER} !important;
+    border-radius: 14px !important;
+    min-height: 48px !important;
 }
 
 .stMultiSelect [data-baseweb="tag"] {
-    background-color: COLOR_FLAMBOYANT_PINK !important;
+    background-color: transparent !important;
+    color: {TEXT_MAIN} !important;
+    border: 1px solid {BORDER} !important;
+    border-radius: 10px !important;
+    font-weight: 800 !important;
+    box-shadow: none !important;
 }
 
-.stSelectbox div[data-baseweb="select"] > div {
-    border-color: COLOR_FLAMBOYANT_PINK !important;
+.stMultiSelect [data-baseweb="tag"] span {
+    color: {TEXT_MAIN} !important;
 }
+
+.stMultiSelect [data-baseweb="tag"] svg {
+    color: {TEXT_MAIN} !important;
+    fill: {TEXT_MAIN} !important;
+}
+
+.stSelectbox div[data-baseweb="select"] span,
+.stMultiSelect div[data-baseweb="select"] span,
+.stTextInput input {
+    color: {TEXT_MAIN} !important;
+}
+
+[data-baseweb="popover"], [data-baseweb="menu"] {
+    background-color: #FFFFFF !important;
+    color: {TEXT_MAIN} !important;
+}
+
+[data-baseweb="menu"] li, [role="option"] {
+    color: {TEXT_MAIN} !important;
+    background-color: #FFFFFF !important;
+    font-size: 1.02rem !important;
+}
+
+[data-baseweb="menu"] li:hover, [role="option"]:hover {
+    background-color: #F3F4F6 !important;
+}
+
+
+/* Dataframe/table: force white surface + black text where Streamlit allows CSS override */
+[data-testid="stDataFrame"] div,
+[data-testid="stDataFrame"] span,
+[data-testid="stDataFrame"] p {
+    color: {TEXT_MAIN} !important;
+}
+
+[data-testid="stDataFrame"] {
+    background: #FFFFFF !important;
+    border: 1px solid {BORDER} !important;
+    box-shadow: {CARD_SHADOW};
+}
+
+/* Premium colored cards */
+.premium-card.good-card {
+    background: linear-gradient(135deg, #ECFDF5 0%, #FFFFFF 72%) !important;
+    border-color: #86EFAC !important;
+}
+
+.premium-card.bad-card {
+    background: linear-gradient(135deg, #FFF7ED 0%, #FFFFFF 72%) !important;
+    border-color: #FDBA74 !important;
+}
+
+.card-icon {
+    width: 34px;
+    height: 34px;
+    border-radius: 12px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: #F3F4F6;
+    margin-bottom: 10px;
+    font-size: 1.25rem !important;
+}
+
+.class-card {
+    border-radius: 20px;
+    padding: 18px 20px;
+    min-height: 124px;
+    box-shadow: {CARD_SHADOW};
+    border: 1px solid rgba(17, 24, 39, 0.10);
+}
+
+.class-short {
+    font-size: 1.65rem !important;
+    line-height: 1 !important;
+    font-weight: 900 !important;
+    margin-bottom: 10px;
+}
+
+.class-label {
+    font-size: 0.95rem !important;
+    font-weight: 800 !important;
+    opacity: 0.95;
+    margin-bottom: 8px;
+}
+
+.class-value {
+    font-size: 2.05rem !important;
+    font-weight: 900 !important;
+    letter-spacing: -0.03em !important;
+}
+
+.station-mini-card .premium-value {
+    font-size: 1.35rem !important;
+    line-height: 1.12 !important;
+    white-space: nowrap;
+}
+
+.station-mini-card .premium-label {
+    font-size: 0.82rem !important;
+}
+
+hr {
+    border-color: {BORDER};
+}
+
+[data-testid="stDataFrame"] {
+    border-radius: 16px;
+    overflow: hidden;
+}
+
+button[kind="secondary"] {
+    background-color: #FFFFFF !important;
+    color: {TEXT_MAIN} !important;
+    border: 1px solid {BORDER} !important;
+}
+
+
+/* Force all visible text on white dashboard to be readable */
+.main, .block-container, .element-container, .stMarkdown, .stMarkdown *,
+[data-testid="stMetric"], [data-testid="stMetric"] *,
+[data-testid="stCaptionContainer"], [data-testid="stCaptionContainer"] *,
+[data-testid="stDataFrame"], [data-testid="stDataFrame"] * {
+    color: {TEXT_MAIN} !important;
+}
+
+/* Data tables: white background and black text */
+[data-testid="stDataFrame"],
+[data-testid="stDataFrame"] > div,
+[data-testid="stDataFrame"] div[role="grid"],
+[data-testid="stDataFrame"] div[role="row"],
+[data-testid="stDataFrame"] div[role="gridcell"],
+[data-testid="stDataFrame"] div[role="columnheader"] {
+    background-color: #FFFFFF !important;
+    color: {TEXT_MAIN} !important;
+}
+
+[data-testid="stDataFrame"] canvas {
+    background-color: #FFFFFF !important;
+}
+
+/* Plotly axis and legend readability */
+.js-plotly-plot .plotly .xtick text,
+.js-plotly-plot .plotly .ytick text,
+.js-plotly-plot .plotly .gtitle,
+.js-plotly-plot .plotly .xtitle,
+.js-plotly-plot .plotly .ytitle,
+.js-plotly-plot .plotly .legend text,
+.js-plotly-plot .plotly .legendtitletext,
+.js-plotly-plot .plotly .colorbar text {
+    fill: {TEXT_MAIN} !important;
+    color: {TEXT_MAIN} !important;
+}
+
+
+/* Main section titles: bigger than subsection titles */
+.main-section-title {
+    color: #111827 !important;
+    font-size: clamp(1.7rem, 2.2vw, 2.5rem) !important;
+    line-height: 1.15 !important;
+    font-weight: 900 !important;
+    letter-spacing: -0.035em !important;
+    margin: 2.6rem 0 1.25rem 0 !important;
+}
+
+/* Subsection headings */
+h3 {
+    font-size: clamp(1.15rem, 1.45vw, 1.55rem) !important;
+    color: #111827 !important;
+}
+
+/* HTML light tables */
+.light-table-wrap {
+    width: 100%;
+    overflow: auto;
+    border: 1px solid #E5E7EB;
+    border-radius: 16px;
+    background: #FFFFFF;
+    box-shadow: 0 12px 30px rgba(17, 24, 39, 0.08);
+}
+.light-table {
+    width: 100%;
+    border-collapse: collapse;
+    background: #FFFFFF !important;
+    color: #111827 !important;
+    font-size: 0.98rem;
+}
+.light-table thead th {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    background: #F8FAFC !important;
+    color: #111827 !important;
+    font-weight: 900;
+    border-bottom: 1px solid #E5E7EB;
+    padding: 0.7rem 0.85rem;
+    text-align: left;
+    white-space: nowrap;
+}
+.light-table tbody td, .light-table tbody th {
+    background: #FFFFFF !important;
+    color: #111827 !important;
+    border-bottom: 1px solid #EEF2F7;
+    padding: 0.62rem 0.85rem;
+    vertical-align: top;
+}
+.light-table tbody tr:nth-child(even) td,
+.light-table tbody tr:nth-child(even) th {
+    background: #F9FAFB !important;
+}
+.light-table tbody tr:hover td,
+.light-table tbody tr:hover th {
+    background: #FFF7E6 !important;
+}
+
+/* Make Streamlit widgets responsive */
+[data-testid="stHorizontalBlock"] {
+    gap: 1.25rem;
+}
+
+@media (max-width: 900px) {
+    .block-container {
+        padding-left: 0.85rem !important;
+        padding-right: 0.85rem !important;
+        padding-top: 1.2rem !important;
+    }
+    h1 {
+        font-size: 2.1rem !important;
+    }
+    .main-section-title {
+        font-size: 1.55rem !important;
+        margin-top: 1.8rem !important;
+    }
+    .premium-card, .class-card {
+        min-height: auto !important;
+        padding: 16px 18px !important;
+    }
+    .premium-value, .class-value {
+        font-size: 1.55rem !important;
+    }
+    .light-table {
+        font-size: 0.9rem !important;
+    }
+}
+
 </style>
 """
-
-css = (
-    css
-    .replace("COLOR_DARK_BG", DARK_BG)
-    .replace("COLOR_JAGGER", JAGGER)
-    .replace("COLOR_CARD_BG", CARD_BG)
-    .replace("COLOR_DASHING_YELLOW", DASHING_YELLOW)
-    .replace("COLOR_FLAMBOYANT_PINK", FLAMBOYANT_PINK)
-)
+for _css_key, _css_value in {
+    "JAGGER": JAGGER,
+    "DASHING_YELLOW": DASHING_YELLOW,
+    "FLAMBOYANT_PINK": FLAMBOYANT_PINK,
+    "TEXT_MAIN": TEXT_MAIN,
+    "TEXT_MUTED": TEXT_MUTED,
+    "BORDER": BORDER,
+    "PAGE_BG": PAGE_BG,
+    "SIDEBAR_BG": SIDEBAR_BG,
+    "CARD_SHADOW": CARD_SHADOW,
+}.items():
+    css = css.replace("{" + _css_key + "}", str(_css_value))
 
 st.markdown(css, unsafe_allow_html=True)
 
@@ -333,6 +755,291 @@ def get_latest_month(selected_months):
         return selected_months[-1]
 
     return month_df.sort_values("MonthDate")["Month"].iloc[-1]
+
+def get_selected_month_label(selected_months):
+    if not selected_months:
+        return ""
+
+    temp = pd.DataFrame({"Month": selected_months})
+    temp["MonthDate"] = pd.to_datetime(temp["Month"] + "-01", errors="coerce")
+    temp = temp.dropna().sort_values("MonthDate")
+
+    if temp.empty:
+        return ", ".join(selected_months)
+
+    if len(temp) == 1:
+        return temp["MonthDate"].iloc[0].strftime("%b %Y")
+
+    years = temp["MonthDate"].dt.year.unique().tolist()
+
+    if len(years) == 1:
+        year = years[0]
+        months = temp["MonthDate"].dt.month.tolist()
+        expected = list(range(min(months), max(months) + 1))
+
+        if months == expected:
+            start_label = temp["MonthDate"].iloc[0].strftime("%b")
+            end_label = temp["MonthDate"].iloc[-1].strftime("%b")
+            return f"{start_label}-{end_label} {year}"
+
+        month_labels = ", ".join(temp["MonthDate"].dt.strftime("%b").tolist())
+        return f"{month_labels} {year}"
+
+    return f"{temp['MonthDate'].iloc[0].strftime('%b %Y')} - {temp['MonthDate'].iloc[-1].strftime('%b %Y')}"
+
+
+def get_icon_for_card(label, good=None):
+    label_lower = str(label).lower()
+    if "top complaint" in label_lower:
+        return "💬"
+    if "complaint" in label_lower:
+        return "📊"
+    if "csat" in label_lower:
+        return "⭐"
+    if "rating" in label_lower:
+        return "📈"
+    if "rsp" in label_lower or "response" in label_lower:
+        return "👥"
+    if "lowest" in label_lower:
+        return "⚠️"
+    if good is True:
+        return "✅"
+    if good is False:
+        return "🔶"
+    return "✦"
+
+
+def render_premium_card(label, value, delta=None, good=None, small=False):
+    if delta is None:
+        delta_html = ""
+    else:
+        delta_color = TEXT_MUTED
+        if good is True:
+            delta_color = GREEN_GOOD
+        elif good is False:
+            delta_color = ORANGE_LOW
+
+        delta_html = f'<div class="premium-delta" style="color:{delta_color}!important;">{delta}</div>'
+
+    tone_class = ""
+    if good is True:
+        tone_class = " good-card"
+    elif good is False:
+        tone_class = " bad-card"
+
+    small_class = " station-mini-card" if small else ""
+    icon = get_icon_for_card(label, good)
+
+    st.markdown(
+        f"""
+        <div class="premium-card{tone_class}{small_class}">
+            <div class="card-icon">{icon}</div>
+            <div class="premium-label">{label}</div>
+            <div class="premium-value">{value}</div>
+            {delta_html}
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
+
+
+def render_class_card(class_name, value):
+    style = CLASS_CARD_STYLE.get(
+        class_name,
+        {"short": class_name, "bg": JAGGER, "fg": "#FFFFFF", "icon": "✈️"}
+    )
+    st.markdown(
+        f"""
+        <div class="class-card" style="background:{style['bg']}; color:{style['fg']}!important;">
+            <div class="class-short" style="color:{style['fg']}!important;">{style['icon']} {style['short']}</div>
+            <div class="class-label" style="color:{style['fg']}!important;">{class_name}</div>
+            <div class="class-value" style="color:{style['fg']}!important;">{value}</div>
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
+
+
+def apply_premium_plot_layout(fig, height=None, title_size=22, show_grid=True):
+    fig.update_layout(
+        paper_bgcolor=PAGE_BG,
+        plot_bgcolor=PLOT_BG,
+        font=dict(color=TEXT_MAIN, size=16, family="Segoe UI, Inter, Arial"),
+        title=dict(font=dict(size=title_size, color=TEXT_MAIN, family="Segoe UI, Inter, Arial")),
+        legend=dict(
+            font=dict(size=14, color=TEXT_MAIN),
+            title_font=dict(color=TEXT_MAIN, size=14),
+            bgcolor="rgba(255,255,255,0.88)",
+            bordercolor=BORDER,
+            borderwidth=0
+        ),
+        margin=dict(l=56, r=56, t=82, b=76),
+        xaxis=dict(
+            title_font=dict(color=TEXT_MAIN, size=16),
+            tickfont=dict(color=TEXT_MAIN, size=14),
+            color=TEXT_MAIN,
+            linecolor="#CBD5E1"
+        ),
+        yaxis=dict(
+            title_font=dict(color=TEXT_MAIN, size=16),
+            tickfont=dict(color=TEXT_MAIN, size=14),
+            color=TEXT_MAIN,
+            linecolor="#CBD5E1"
+        )
+    )
+
+    if height is not None:
+        fig.update_layout(height=height)
+
+    if show_grid:
+        fig.update_xaxes(gridcolor="#E5E7EB", zerolinecolor="#D1D5DB", linecolor="#CBD5E1")
+        fig.update_yaxes(gridcolor="#E5E7EB", zerolinecolor="#D1D5DB", linecolor="#CBD5E1")
+    else:
+        fig.update_xaxes(showgrid=False, linecolor="#CBD5E1")
+        fig.update_yaxes(showgrid=False, linecolor="#CBD5E1")
+
+    fig.update_xaxes(tickfont=dict(color=TEXT_MAIN), title_font=dict(color=TEXT_MAIN), color=TEXT_MAIN)
+    fig.update_yaxes(tickfont=dict(color=TEXT_MAIN), title_font=dict(color=TEXT_MAIN), color=TEXT_MAIN)
+
+    return fig
+
+
+def aggregate_profile_for_selected_months(profile_df, selected_months, label_col):
+    if profile_df.empty or label_col not in profile_df.columns:
+        return pd.DataFrame()
+
+    temp = profile_df[profile_df["Month"].isin(selected_months)].copy()
+
+    if temp.empty:
+        return temp
+
+    temp[label_col] = temp[label_col].astype(str).str.strip()
+
+    if "Count" in temp.columns:
+        temp["Count"] = pd.to_numeric(temp["Count"], errors="coerce").fillna(0)
+
+        result = (
+            temp
+            .groupby(label_col, as_index=False)
+            .agg({"Count": "sum"})
+        )
+
+        total = result["Count"].sum()
+        result["Percent"] = result["Count"] / total * 100 if total > 0 else 0
+        return result.sort_values("Count", ascending=False)
+
+    if "Percent" in temp.columns:
+        temp["Percent"] = pd.to_numeric(temp["Percent"], errors="coerce").fillna(0)
+
+        result = (
+            temp
+            .groupby(label_col, as_index=False)
+            .agg({"Percent": "mean"})
+        )
+
+        total = result["Percent"].sum()
+        result["Percent"] = result["Percent"] / total * 100 if total > 0 else 0
+        return result.sort_values("Percent", ascending=False)
+
+    return pd.DataFrame()
+
+
+def plot_profile_donut(plot_df, label_col, title, colors):
+    if plot_df.empty:
+        st.info(f"No data for {title}")
+        return
+
+    value_col = "Count" if "Count" in plot_df.columns and plot_df["Count"].sum() > 0 else "Percent"
+
+    fig = px.pie(
+        plot_df,
+        names=label_col,
+        values=value_col,
+        hole=0.55,
+        title=title,
+        color_discrete_sequence=colors
+    )
+
+    fig.update_traces(
+        textinfo="percent",
+        textfont_size=15,
+        marker=dict(line=dict(color="#FFFFFF", width=2))
+    )
+
+    apply_premium_plot_layout(fig, height=460, title_size=22, show_grid=False)
+    fig.update_layout(
+        legend=dict(orientation="h", y=-0.18, x=0.5, xanchor="center", font=dict(size=12, color=TEXT_MAIN)),
+        margin=dict(l=10, r=10, t=70, b=80)
+    )
+
+    st.plotly_chart(fig, width="stretch")
+
+
+def format_delta_value(current_value, previous_value, inverse_good=True):
+    change = current_value - previous_value
+
+    if previous_value == 0 and current_value > 0:
+        delta_text = f"{change:+,.1f} (New)"
+    elif previous_value == 0:
+        delta_text = "0.0 (0.0%)"
+    else:
+        pct = change / previous_value * 100
+        delta_text = f"{change:+,.1f} ({pct:+.1f}%)"
+
+    good = change <= 0 if inverse_good else change >= 0
+    return delta_text, good
+
+
+
+def light_table_style(styler):
+    return (
+        styler
+        .set_properties(**{
+            "background-color": "#FFFFFF",
+            "color": TEXT_MAIN,
+            "border-color": BORDER,
+            "font-size": "14px"
+        })
+        .set_table_styles([
+            {"selector": "th", "props": [("background-color", "#F8FAFC"), ("color", TEXT_MAIN), ("font-weight", "800"), ("border-color", BORDER)]},
+            {"selector": "td", "props": [("background-color", "#FFFFFF"), ("color", TEXT_MAIN), ("border-color", BORDER)]},
+            {"selector": "tbody tr:nth-child(even) td", "props": [("background-color", "#F9FAFB")]},
+        ])
+    )
+
+
+def section_header(title):
+    st.markdown(
+        f'<div class="main-section-title">{title}</div>',
+        unsafe_allow_html=True
+    )
+
+
+def render_light_table(df, height=420, formats=None, hide_index=True):
+    """Render a readable white-background HTML table instead of dark Streamlit grid."""
+    if df is None or df.empty:
+        st.info("No data available.")
+        return
+
+    display_df = df.copy()
+
+    if formats:
+        for col, fmt in formats.items():
+            if col in display_df.columns:
+                def _fmt_val(v, fmt=fmt):
+                    try:
+                        if pd.isna(v):
+                            return ""
+                        return fmt.format(v)
+                    except Exception:
+                        return str(v)
+                display_df[col] = display_df[col].apply(_fmt_val)
+
+    html = display_df.to_html(index=not hide_index, escape=False, classes="light-table")
+    st.markdown(
+        f'<div class="light-table-wrap" style="max-height:{height}px;">{html}</div>',
+        unsafe_allow_html=True
+    )
 
 
 # -----------------------------
@@ -716,7 +1423,7 @@ def normalize_topic_from_text(text):
         return "Cabin Cleanliness"
 
     if "LAVATORY" in compact:
-        return "Lavatory Cleanliness"
+        return "Lavatory Dirty"
 
     if "SEAT" in compact:
         return "Seat"
@@ -896,7 +1603,7 @@ def normalize_summary_complaint_topic(value):
         return "Cabin Cleanliness"
 
     if "LAVATORY" in compact:
-        return "Lavatory Cleanliness"
+        return "Lavatory Dirty"
 
     if "INFLIGHTBEVERAGE" in compact or "BEVERAGE" in compact:
         return "In-flight Beverage"
@@ -1051,6 +1758,19 @@ def load_summary_complaint():
                 as_index=False
             )
             .agg({"Complaint Count": "sum"})
+        )
+
+        long_df = long_df[long_df["Topic"].isin(ALLOWED_COMPLAINT_TOPICS)].copy()
+
+        # Separate positive feedback from complaint counts.
+        # Rows whose Complaint Topic is exactly/essentially "Commendation" are counted as commendations.
+        long_df["Is Commendation"] = (
+            long_df["Complaint Topic"]
+            .astype(str)
+            .str.strip()
+            .str.lower()
+            .str.replace(r"\s+", " ", regex=True)
+            .eq("commendation")
         )
 
         long_df["Source File"] = file_path.name
@@ -1216,107 +1936,61 @@ with col4:
 # -----------------------------
 # PASSENGER PROFILE
 # -----------------------------
-st.subheader("Passenger Profile")
+section_header("Passenger Profile")
 
-profile_month = get_latest_month(selected_months)
+profile_month_label = get_selected_month_label(selected_months)
 
-profile_col1, profile_col2, profile_col3 = st.columns(3)
+profile_col1, profile_col2, profile_col3 = st.columns(3, gap="large")
 
 with profile_col1:
     gender_df = extra_data.get("gender", pd.DataFrame())
+    gender_plot = aggregate_profile_for_selected_months(
+        gender_df,
+        selected_months,
+        "Gender"
+    )
 
-    if not gender_df.empty:
-        gender_plot = gender_df[gender_df["Month"] == profile_month].copy()
-
-        if not gender_plot.empty:
-            fig_gender = px.pie(
-                gender_plot,
-                names="Gender",
-                values="Percent",
-                hole=0.45,
-                title=f"Gender - {profile_month}",
-                color_discrete_sequence=[
-                    FLAMBOYANT_PINK,
-                    DASHING_YELLOW,
-                    JAGGER,
-                    "#7A4E9D"
-                ]
-            )
-
-            fig_gender.update_layout(
-                paper_bgcolor=DARK_BG,
-                plot_bgcolor=DARK_BG,
-                font_color="white",
-                legend=dict(orientation="h", y=-0.2)
-            )
-
-            st.plotly_chart(fig_gender, width="stretch")
+    plot_profile_donut(
+        gender_plot,
+        "Gender",
+        f"Gender - {profile_month_label}",
+        [FLAMBOYANT_PINK, DASHING_YELLOW, JAGGER, "#7A4E9D"]
+    )
 
 with profile_col2:
     age_df = extra_data.get("age_group", pd.DataFrame())
+    age_plot = aggregate_profile_for_selected_months(
+        age_df,
+        selected_months,
+        "Age Group"
+    )
 
-    if not age_df.empty:
-        age_plot = age_df[age_df["Month"] == profile_month].copy()
-
-        if not age_plot.empty:
-            fig_age = px.pie(
-                age_plot,
-                names="Age Group",
-                values="Percent",
-                hole=0.45,
-                title=f"Age Group - {profile_month}",
-                color_discrete_sequence=[
-                    JAGGER,
-                    "#7A4E9D",
-                    FLAMBOYANT_PINK,
-                    DASHING_YELLOW,
-                    "#39d353",
-                    "#00B0F0"
-                ]
-            )
-
-            fig_age.update_layout(
-                paper_bgcolor=DARK_BG,
-                plot_bgcolor=DARK_BG,
-                font_color="white",
-                legend=dict(orientation="h", y=-0.2)
-            )
-
-            st.plotly_chart(fig_age, width="stretch")
+    plot_profile_donut(
+        age_plot,
+        "Age Group",
+        f"Age Group - {profile_month_label}",
+        [JAGGER, "#7A4E9D", FLAMBOYANT_PINK, DASHING_YELLOW, "#39D353", "#00A3E0"]
+    )
 
 with profile_col3:
     purpose_df = extra_data.get("purpose", pd.DataFrame())
+    purpose_plot = aggregate_profile_for_selected_months(
+        purpose_df,
+        selected_months,
+        "Purpose"
+    )
 
-    if not purpose_df.empty:
-        purpose_plot = purpose_df[purpose_df["Month"] == profile_month].copy()
-
-        if not purpose_plot.empty:
-            fig_purpose = px.pie(
-                purpose_plot,
-                names="Purpose",
-                values="Percent",
-                hole=0.45,
-                title=f"Purpose of Journey - {profile_month}",
-                color_discrete_sequence=[
-                    "#2F4F20",
-                    "#ed7d31",
-                    "#2F5597",
-                    "#A5A5A5"
-                ]
-            )
-
-            fig_purpose.update_layout(
-                paper_bgcolor=DARK_BG,
-                plot_bgcolor=DARK_BG,
-                font_color="white",
-                legend=dict(orientation="h", y=-0.2)
-            )
-
-            st.plotly_chart(fig_purpose, width="stretch")
+    plot_profile_donut(
+        purpose_plot,
+        "Purpose",
+        f"Purpose of Journey - {profile_month_label}",
+        ["#31572C", "#ED7D31", "#2F5597", "#A5A5A5", FLAMBOYANT_PINK]
+    )
 
 
 # -----------------------------
 # CLASS RESPONSES FROM SUMMARY PAGE
+# Cards only: no bar chart
 # -----------------------------
 if not class_response_df.empty:
     class_profile = class_response_df[
@@ -1324,7 +1998,7 @@ if not class_response_df.empty:
     ].copy()
 
     if not class_profile.empty:
-        st.subheader("Passenger Class Responses")
+        section_header("Passenger Class Responses")
 
         class_profile = (
             class_profile
@@ -1346,47 +2020,15 @@ if not class_response_df.empty:
         )
 
         class_profile = class_profile.sort_values("Class")
+        class_values = dict(zip(class_profile["Class"].astype(str), class_profile["Responses"]))
 
-        class_cols = st.columns(4)
-
-        for idx, row in class_profile.reset_index(drop=True).iterrows():
-            with class_cols[idx % 4]:
-                st.metric(
-                    row["Class"],
-                    f"{int(row['Responses']):,}"
+        class_cols = st.columns(4, gap="large")
+        for idx, class_name in enumerate(class_order):
+            with class_cols[idx]:
+                render_class_card(
+                    class_name,
+                    f"{int(class_values.get(class_name, 0)):,.0f}"
                 )
-
-        fig_class_response = px.bar(
-            class_profile,
-            x="Class",
-            y="Responses",
-            text="Responses",
-            title="Passenger Class Responses",
-            color="Class",
-            color_discrete_sequence=[
-                DASHING_YELLOW,
-                FLAMBOYANT_PINK,
-                JAGGER,
-                "#7A4E9D"
-            ]
-        )
-
-        fig_class_response.update_traces(
-            texttemplate="%{text:,.0f}",
-            textposition="outside"
-        )
-
-        fig_class_response.update_layout(
-            paper_bgcolor=DARK_BG,
-            plot_bgcolor=PLOT_BG,
-            font_color="white",
-            xaxis_title="Class",
-            yaxis_title="Responses",
-            showlegend=False,
-            height=420
-        )
-
-        st.plotly_chart(fig_class_response, width="stretch")
 
 
 # -----------------------------
@@ -1403,7 +2045,7 @@ if not nationality_df.empty:
     ].copy()
 
     if not nationality_plot.empty:
-        st.subheader("Nationalities Map")
+        section_header("Nationalities Map")
 
         nationality_plot["Nationality Group"] = (
             nationality_plot["Nationality Group"]
@@ -1477,7 +2119,7 @@ if not nationality_df.empty:
                     projection="natural earth",
                     title=(
                         f"Nationalities World Map - "
-                        f"{', '.join(selected_months)}"
+                        f"{get_selected_month_label(selected_months)}"
                     )
                 )
 
@@ -1491,17 +2133,17 @@ if not nationality_df.empty:
                 fig_nationality_map.update_layout(
                     paper_bgcolor=DARK_BG,
                     plot_bgcolor=DARK_BG,
-                    font_color="white",
+                    font_color=TEXT_MAIN,
                     geo=dict(
                         bgcolor=DARK_BG,
                         showland=True,
-                        landcolor="#2b2b2b",
+                        landcolor="#F3F4F6",
                         showcountries=True,
-                        countrycolor="#666666",
+                        countrycolor="#9CA3AF",
                         showocean=True,
-                        oceancolor="#111827",
-                        lakecolor="#111827",
-                        coastlinecolor="#666666",
+                        oceancolor="#EAF2FF",
+                        lakecolor="#EAF2FF",
+                        coastlinecolor="#9CA3AF",
                         projection_scale=1.05
                     ),
                     margin=dict(l=10, r=10, t=60, b=10),
@@ -1509,6 +2151,11 @@ if not nationality_df.empty:
                     height=620
                 )
 
+                apply_premium_plot_layout(fig_nationality_map, height=620, title_size=20, show_grid=False)
+                fig_nationality_map.update_layout(
+                    font=dict(color=TEXT_MAIN),
+                    coloraxis_colorbar=dict(title=dict(text="Share (%)", font=dict(color=TEXT_MAIN)), tickfont=dict(color=TEXT_MAIN))
+                )
                 st.plotly_chart(fig_nationality_map, width="stretch")
 
         with nat_col2:
@@ -1519,21 +2166,29 @@ if not nationality_df.empty:
                 ascending=False
             )
 
-            st.dataframe(
-                display_nat.style.format({
-                    "Count": "{:,.0f}",
-                    "Percent": "{:.2f}%"
-                }),
-                width="stretch",
-                height=420
+            render_light_table(
+                display_nat,
+                height=420,
+                formats={"Count": "{:,.0f}", "Percent": "{:.2f}%"},
+                hide_index=True
             )
 
 
 # -----------------------------
 # SUMMARY DATA
 # -----------------------------
+summary_source_df = filtered_df.copy()
+summary_source_df["Topic"] = summary_source_df["Topic"].apply(normalize_summary_complaint_topic)
+summary_source_df["Topic"] = summary_source_df["Topic"].replace({
+    "Inflight Meal (DC double catering)": "In-flight Meal",
+    "Arrival & Baggage Handling": "Arrival & Baggage",
+    "Irregularity Handling": "Irregularity",
+    "Lavatory Cleanliness": "Lavatory Dirty",
+})
+summary_source_df = summary_source_df[summary_source_df["Topic"].isin(ALLOWED_RATING_TREND_TOPICS)].copy()
+
 summary = (
-    filtered_df
+    summary_source_df
     .groupby("Topic", as_index=False)
     .agg({
         "Very dissatisfied": "mean",
@@ -1547,7 +2202,8 @@ summary = (
     })
 )
 
-summary = summary.sort_values("Average Rating", ascending=False)
+summary["TopicOrder"] = summary["Topic"].map({t: i for i, t in enumerate(ALLOWED_RATING_TREND_TOPICS)})
+summary = summary.sort_values("TopicOrder").drop(columns=["TopicOrder"], errors="ignore")
 
 for col in [
     "Very dissatisfied",
@@ -1567,7 +2223,7 @@ for col in [
 chart_col1, chart_col2, chart_col3 = st.columns([1.2, 1.2, 1.2])
 
 with chart_col1:
-    st.subheader("Class")
+    section_header("Class")
 
     if not class_df.empty:
         class_summary = (
@@ -1599,14 +2255,15 @@ with chart_col1:
         fig_class.update_layout(
             paper_bgcolor=DARK_BG,
             plot_bgcolor=DARK_BG,
-            font_color="white",
+            font_color=TEXT_MAIN,
             legend=dict(orientation="h", y=-0.2)
         )
 
+        apply_premium_plot_layout(fig_class, height=460, title_size=20, show_grid=False)
         st.plotly_chart(fig_class, width="stretch")
 
 with chart_col2:
-    st.subheader("Best Touchpoints")
+    section_header("Best Touchpoints")
 
     best_df = (
         summary
@@ -1626,23 +2283,24 @@ with chart_col2:
 
     fig_best.update_traces(
         marker_color=GREEN_GOOD,
-        textfont_color="white",
+        textfont_color=TEXT_MAIN,
         texttemplate="%{text:.2f}"
     )
 
     fig_best.update_layout(
         paper_bgcolor=DARK_BG,
         plot_bgcolor=DARK_BG,
-        font_color="white",
+        font_color=TEXT_MAIN,
         xaxis_title="Average Rating",
         yaxis_title="",
         yaxis=dict(categoryorder="total ascending")
     )
 
+    apply_premium_plot_layout(fig_best, height=460, title_size=20)
     st.plotly_chart(fig_best, width="stretch")
 
 with chart_col3:
-    st.subheader("Low Touchpoints")
+    section_header("Low Touchpoints")
 
     low_df = (
         summary
@@ -1662,26 +2320,27 @@ with chart_col3:
 
     fig_low.update_traces(
         marker_color=ORANGE_LOW,
-        textfont_color="white",
+        textfont_color=TEXT_MAIN,
         texttemplate="%{text:.2f}"
     )
 
     fig_low.update_layout(
         paper_bgcolor=DARK_BG,
         plot_bgcolor=DARK_BG,
-        font_color="white",
+        font_color=TEXT_MAIN,
         xaxis_title="Average Rating",
         yaxis_title="",
         yaxis=dict(categoryorder="total descending")
     )
 
+    apply_premium_plot_layout(fig_low, height=460, title_size=20)
     st.plotly_chart(fig_low, width="stretch")
 
 
 # -----------------------------
 # STACKED BAR
 # -----------------------------
-st.subheader("Touchpoint Satisfaction Rating")
+section_header("Touchpoint Satisfaction Rating")
 
 rating_order = [
     "Very dissatisfied",
@@ -1725,7 +2384,7 @@ fig_stack.add_trace(
         mode="text",
         text=summary["Average Rating"].round(2),
         textfont=dict(
-            color=DASHING_YELLOW,
+            color=TEXT_MAIN,
             size=16
         ),
         showlegend=False,
@@ -1736,9 +2395,9 @@ fig_stack.add_trace(
 fig_stack.update_layout(
     barmode="stack",
     height=560,
-    paper_bgcolor=DARK_BG,
+    paper_bgcolor=PAGE_BG,
     plot_bgcolor=PLOT_BG,
-    font_color="white",
+    font_color=TEXT_MAIN,
     title="5-Scale Satisfaction by Touchpoint",
     xaxis_title="",
     yaxis_title="Percentage",
@@ -1753,15 +2412,43 @@ fig_stack.update_layout(
     margin=dict(l=40, r=40, t=90, b=120)
 )
 
-fig_stack.update_xaxes(tickangle=-45)
-
+fig_stack.update_xaxes(
+    tickangle=-35,
+    categoryorder="array",
+    categoryarray=ALLOWED_RATING_TREND_TOPICS,
+    tickmode="array",
+    tickvals=ALLOWED_RATING_TREND_TOPICS,
+    ticktext=[TOPIC_TICK_LABELS.get(t, t) for t in ALLOWED_RATING_TREND_TOPICS],
+    tickfont=dict(color=TEXT_MAIN, size=13),
+    title_font=dict(color=TEXT_MAIN),
+    color=TEXT_MAIN
+)
+fig_stack.update_yaxes(
+    tickfont=dict(color=TEXT_MAIN, size=13),
+    title_font=dict(color=TEXT_MAIN),
+    color=TEXT_MAIN,
+    gridcolor="#E5E7EB"
+)
+fig_stack.update_layout(
+    legend=dict(
+        orientation="h",
+        yanchor="bottom",
+        y=1.05,
+        xanchor="center",
+        x=0.5,
+        font=dict(color=TEXT_MAIN, size=13),
+        title_font=dict(color=TEXT_MAIN)
+    ),
+    font=dict(color=TEXT_MAIN)
+)
+apply_premium_plot_layout(fig_stack, height=560, title_size=22)
 st.plotly_chart(fig_stack, width="stretch")
 
 
 # -----------------------------
 # STATION SATISFACTION MAP + STATIONS SCORE
 # -----------------------------
-st.subheader("Station Satisfaction Map")
+section_header("Station Satisfaction Map")
 
 station_df = extra_data.get("station", pd.DataFrame())
 
@@ -1942,26 +2629,31 @@ else:
                 fig_station_map.update_layout(
                     paper_bgcolor=DARK_BG,
                     plot_bgcolor=DARK_BG,
-                    font_color="white",
+                    font_color=TEXT_MAIN,
                     geo=dict(
                         bgcolor=DARK_BG,
                         showland=True,
-                        landcolor="#2b2b2b",
+                        landcolor="#F3F4F6",
                         showcountries=True,
-                        countrycolor="#666666",
+                        countrycolor="#9CA3AF",
                         showocean=True,
-                        oceancolor="#111827",
-                        lakecolor="#111827",
-                        coastlinecolor="#666666",
+                        oceancolor="#EAF2FF",
+                        lakecolor="#EAF2FF",
+                        coastlinecolor="#9CA3AF",
                         projection_scale=1.05
                     ),
                     margin=dict(l=10, r=10, t=60, b=10),
                     coloraxis_colorbar=dict(
-                        title="Sat 5-4 (%)"
+                        title=dict(text="Sat 5-4 (%)", font=dict(color=TEXT_MAIN)),
+                        tickfont=dict(color=TEXT_MAIN)
                     ),
                     height=680
                 )
 
+                apply_premium_plot_layout(fig_station_map, height=680, title_size=20, show_grid=False)
+                fig_station_map.update_layout(
+                    coloraxis_colorbar=dict(title=dict(text="Sat 5-4 (%)", font=dict(color=TEXT_MAIN)), tickfont=dict(color=TEXT_MAIN))
+                )
                 st.plotly_chart(fig_station_map, width="stretch")
 
         with map_col2:
@@ -1970,45 +2662,34 @@ else:
             if not station_total_row.empty:
                 total_row = station_total_row.iloc[0]
 
-                score_col1, score_col2, score_col3, score_col4 = st.columns(4)
+                score_col1, score_col2, score_col3, score_col4 = st.columns(4, gap="small")
 
                 with score_col1:
-                    st.metric(
-                        "Stations 5-4",
-                        f"{total_row['Satisfaction 5-4']:.2f}%"
-                    )
+                    render_premium_card("Stations 5-4", f"{total_row['Satisfaction 5-4']:.2f}%", small=True)
 
                 with score_col2:
-                    st.metric(
-                        "Stations 3",
-                        f"{total_row['Neutral 3']:.2f}%"
-                    )
+                    render_premium_card("Stations 3", f"{total_row['Neutral 3']:.2f}%", small=True)
 
                 with score_col3:
-                    st.metric(
-                        "Stations 2-1",
-                        f"{total_row['Dissatisfaction 2-1']:.2f}%"
-                    )
+                    render_premium_card("Stations 2-1", f"{total_row['Dissatisfaction 2-1']:.2f}%", small=True)
 
                 with score_col4:
-                    st.metric(
-                        "Stations RSP",
-                        f"{int(total_row['RSP']):,}"
-                    )
+                    render_premium_card("Stations RSP", f"{int(total_row['RSP']):,}", small=True)
             else:
                 st.info("No Stations summary row found from Appendix.")
 
             display_station_summary = station_detail_summary.drop(columns=["StationKey"])
 
-            st.dataframe(
-                display_station_summary.style.format({
+            render_light_table(
+                display_station_summary,
+                height=440,
+                formats={
                     "Satisfaction 5-4": "{:.2f}%",
                     "Neutral 3": "{:.2f}%",
                     "Dissatisfaction 2-1": "{:.2f}%",
                     "RSP": "{:,.0f}"
-                }),
-                width="stretch",
-                height=440
+                },
+                hide_index=True
             )
 
             if not missing_coord_df.empty:
@@ -2017,21 +2698,24 @@ else:
                     "ยังมีบาง Station ที่ไม่พบพิกัด กรุณาเพิ่มชื่อด้านล่างเข้า STATION_COORDINATES"
                 )
 
-                st.dataframe(
+                missing_display = (
                     missing_coord_df[["Station"]]
                     .drop_duplicates()
-                    .sort_values("Station"),
-                    width="stretch",
-                    height=220
+                    .sort_values("Station")
+                )
+                render_light_table(
+                    missing_display,
+                    height=220,
+                    hide_index=True
                 )
             else:
-                st.success("All station coordinates found.")
+                pass
 
 
 # -----------------------------
 # YEAR-OVER-YEAR TREND BY TOUCHPOINT
 # -----------------------------
-st.subheader("Average Rating Trend: Year over Year by Touchpoint")
+section_header("Average Rating Trend: Year over Year by Touchpoint")
 
 trend_df = df.copy()
 
@@ -2048,11 +2732,20 @@ trend_summary = (
     })
 )
 
+trend_summary["Topic"] = trend_summary["Topic"].apply(normalize_summary_complaint_topic)
+trend_summary["Topic"] = trend_summary["Topic"].replace({
+    "Lavatory Cleanliness": "Lavatory Dirty",
+    "Inflight Meal (DC double catering)": "In-flight Meal",
+    "Arrival & Baggage Handling": "Arrival & Baggage",
+    "Irregularity Handling": "Irregularity",
+})
+trend_summary = trend_summary[trend_summary["Topic"].isin(ALLOWED_RATING_TREND_TOPICS)].copy()
+
 trend_summary["Year"] = trend_summary["Year"].astype(int).astype(str)
 trend_summary["Average Rating"] = trend_summary["Average Rating"].round(2)
 trend_summary["CSAT"] = trend_summary["CSAT"].round(2)
 
-trend_topics = sorted(trend_summary["Topic"].dropna().unique())
+trend_topics = [t for t in ALLOWED_RATING_TREND_TOPICS if t in trend_summary["Topic"].dropna().unique()]
 
 for i in range(0, len(trend_topics), 2):
     col_left, col_right = st.columns(2)
@@ -2110,15 +2803,11 @@ for i in range(0, len(trend_topics), 2):
                         )
                     )
 
+            apply_premium_plot_layout(fig_topic_trend, height=400, title_size=21)
             fig_topic_trend.update_layout(
-                paper_bgcolor=DARK_BG,
-                plot_bgcolor=PLOT_BG,
-                font_color="white",
                 xaxis_title="Month",
                 yaxis_title="Average Rating",
-                height=380,
-                legend_title_text="Year",
-                margin=dict(l=40, r=40, t=70, b=60)
+                legend_title_text="Year"
             )
 
             fig_topic_trend.update_xaxes(
@@ -2144,13 +2833,10 @@ for i in range(0, len(trend_topics), 2):
 
 
 # -----------------------------
-# COMPLAINT COUNT CHART FROM SUMMARY COMPLAINT
-# Latest vs Previous by TCSS Topic + Complaint Topic
-# KPI Cards show every TCSS Topic together
-# Detail chart uses selectbox
-# YoY Trend as Line Chart
+# COMPLAINT / COMMENDATION COUNT CHART FROM SUMMARY COMPLAINT
+# Average 2026 vs 2025 + separated Commendation
 # -----------------------------
-st.subheader("Complaint Count by Topic")
+section_header("Complaint Count by Topic")
 
 if complaint_summary_df.empty:
     st.info(
@@ -2161,6 +2847,7 @@ if complaint_summary_df.empty:
 
 else:
     complaint_all = complaint_summary_df.copy()
+    complaint_all = complaint_all[complaint_all["Topic"].isin(ALLOWED_COMPLAINT_TOPICS)].copy()
 
     complaint_all["MonthDate"] = pd.to_datetime(
         complaint_all["MonthDate"],
@@ -2171,735 +2858,393 @@ else:
         complaint_all["MonthDate"].notna()
     ].copy()
 
+    if "Is Commendation" not in complaint_all.columns:
+        complaint_all["Is Commendation"] = (
+            complaint_all["Complaint Topic"]
+            .astype(str)
+            .str.strip()
+            .str.lower()
+            .str.replace(r"\s+", " ", regex=True)
+            .eq("commendation")
+        )
+
     if complaint_all.empty:
-        st.info("Complaint data is empty after parsing MonthDate.")
+        st.info("Complaint data is empty after filtering the required TCSS topics.")
 
     else:
-        available_month_dates = (
-            complaint_all["MonthDate"]
-            .dropna()
-            .drop_duplicates()
-            .sort_values()
-            .tolist()
-        )
+        available_years = sorted(complaint_all["Year"].dropna().astype(int).unique().tolist())
+        current_year = 2026 if 2026 in available_years else max(available_years)
+        previous_year = current_year - 1
+        comparison_years = [y for y in [previous_year, current_year] if y in available_years]
 
-        latest_month_date = available_month_dates[-1]
+        complaint_only = complaint_all[~complaint_all["Is Commendation"]].copy()
+        commendation_only = complaint_all[complaint_all["Is Commendation"]].copy()
 
-        previous_month_date = (
-            available_month_dates[-2]
-            if len(available_month_dates) >= 2
-            else None
-        )
-
-        latest_month_text = latest_month_date.strftime("%Y-%m")
-
-        previous_month_text = (
-            previous_month_date.strftime("%Y-%m")
-            if previous_month_date is not None
-            else None
-        )
-
-        previous_month_label = (
-            previous_month_text
-            if previous_month_text is not None
-            else "Previous Month"
-        )
-
-        def calculate_change_percent(row):
-            previous_value = row["Previous Month"]
-            current_value = row["Current Month"]
-
-            if previous_value == 0 and current_value == 0:
-                return 0
-
-            if previous_value == 0 and current_value > 0:
-                return None
-
-            return (
-                (current_value - previous_value) /
-                previous_value *
-                100
+        def build_monthly_topic_grid(metric_df, value_col="Complaint Count"):
+            monthly_topic_total = (
+                metric_df
+                .groupby(["Year", "MonthNum", "MonthName", "Topic"], as_index=False)
+                .agg({value_col: "sum"})
             )
 
-        def format_delta(change_value, change_percent):
-            change_value = int(change_value)
-
-            if pd.isna(change_percent):
-                return f"{change_value:+,} (New)"
-
-            return f"{change_value:+,} ({change_percent:+.1f}%)"
-
-        latest_topic_df = (
-            complaint_all[
-                complaint_all["MonthDate"] == latest_month_date
-            ]
-            .groupby("Topic", as_index=False)
-            .agg({"Complaint Count": "sum"})
-            .rename(columns={"Complaint Count": "Current Month"})
-        )
-
-        if previous_month_date is not None:
-            previous_topic_df = (
-                complaint_all[
-                    complaint_all["MonthDate"] == previous_month_date
-                ]
-                .groupby("Topic", as_index=False)
-                .agg({"Complaint Count": "sum"})
-                .rename(columns={"Complaint Count": "Previous Month"})
-            )
-        else:
-            previous_topic_df = pd.DataFrame(
-                columns=["Topic", "Previous Month"]
-            )
-
-        latest_vs_previous = latest_topic_df.merge(
-            previous_topic_df,
-            on="Topic",
-            how="outer"
-        ).fillna(0)
-
-        latest_vs_previous["Current Month"] = (
-            latest_vs_previous["Current Month"]
-            .astype(int)
-        )
-
-        latest_vs_previous["Previous Month"] = (
-            latest_vs_previous["Previous Month"]
-            .astype(int)
-        )
-
-        latest_vs_previous["Change"] = (
-            latest_vs_previous["Current Month"] -
-            latest_vs_previous["Previous Month"]
-        )
-
-        latest_vs_previous["Change %"] = latest_vs_previous.apply(
-            calculate_change_percent,
-            axis=1
-        )
-
-        latest_vs_previous = latest_vs_previous.sort_values(
-            "Current Month",
-            ascending=False
-        )
-
-        ordered_topics = latest_vs_previous["Topic"].tolist()
-
-        st.markdown(
-            f"### Complaint Count: {latest_month_text}"
-            + (
-                f" vs {previous_month_text}"
-                if previous_month_text is not None
-                else ""
-            )
-        )
-
-        total_current = int(latest_vs_previous["Current Month"].sum())
-        total_previous = int(latest_vs_previous["Previous Month"].sum())
-        total_change = total_current - total_previous
-
-        if total_previous > 0:
-            total_change_pct = total_change / total_previous * 100
-            total_delta_text = f"{total_change:+,} ({total_change_pct:+.1f}%)"
-        elif total_current > 0:
-            total_delta_text = f"{total_change:+,} (New)"
-        else:
-            total_delta_text = "0 (0.0%)"
-
-        overview_kpi_1, overview_kpi_2, overview_kpi_3 = st.columns(3)
-
-        with overview_kpi_1:
-            st.metric(
-                f"Total Complaints {latest_month_text}",
-                f"{total_current:,}",
-                total_delta_text,
-                delta_color="inverse"
-            )
-
-        with overview_kpi_2:
-            if not latest_vs_previous.empty:
-                highest_row = latest_vs_previous.iloc[0]
-
-                st.metric(
-                    "Highest TCSS Topic",
-                    highest_row["Topic"],
-                    format_delta(
-                        highest_row["Change"],
-                        highest_row["Change %"]
-                    ),
-                    delta_color="inverse"
-                )
-
-        with overview_kpi_3:
-            improved_df = latest_vs_previous.sort_values(
-                "Change",
-                ascending=True
-            )
-
-            if not improved_df.empty:
-                best_improve_row = improved_df.iloc[0]
-
-                st.metric(
-                    "Most Improved TCSS Topic",
-                    best_improve_row["Topic"],
-                    format_delta(
-                        best_improve_row["Change"],
-                        best_improve_row["Change %"]
-                    ),
-                    delta_color="inverse"
-                )
-
-        latest_detail_df = (
-            complaint_all[
-                complaint_all["MonthDate"] == latest_month_date
-            ]
-            .groupby(["Topic", "Complaint Topic"], as_index=False)
-            .agg({"Complaint Count": "sum"})
-            .rename(columns={"Complaint Count": "Current Month"})
-        )
-
-        if previous_month_date is not None:
-            previous_detail_df = (
-                complaint_all[
-                    complaint_all["MonthDate"] == previous_month_date
-                ]
-                .groupby(["Topic", "Complaint Topic"], as_index=False)
-                .agg({"Complaint Count": "sum"})
-                .rename(columns={"Complaint Count": "Previous Month"})
-            )
-        else:
-            previous_detail_df = pd.DataFrame(
-                columns=[
-                    "Topic",
-                    "Complaint Topic",
-                    "Previous Month"
-                ]
-            )
-
-        detail_compare_df = latest_detail_df.merge(
-            previous_detail_df,
-            on=["Topic", "Complaint Topic"],
-            how="outer"
-        ).fillna(0)
-
-        detail_compare_df["Current Month"] = (
-            detail_compare_df["Current Month"]
-            .astype(int)
-        )
-
-        detail_compare_df["Previous Month"] = (
-            detail_compare_df["Previous Month"]
-            .astype(int)
-        )
-
-        detail_compare_df["Change"] = (
-            detail_compare_df["Current Month"] -
-            detail_compare_df["Previous Month"]
-        )
-
-        detail_compare_df["Change %"] = detail_compare_df.apply(
-            calculate_change_percent,
-            axis=1
-        )
-
-        st.markdown("### Complaint KPI Summary by TCSS Topic")
-
-        for topic in ordered_topics:
-            topic_detail = detail_compare_df[
-                detail_compare_df["Topic"] == topic
+            monthly_topic_total = monthly_topic_total[
+                monthly_topic_total["Year"].isin(comparison_years)
             ].copy()
 
-            topic_summary = latest_vs_previous[
-                latest_vs_previous["Topic"] == topic
-            ].copy()
+            # Use all available months from the source year so each year average is monthly average.
+            grid_records = []
+            for y in comparison_years:
+                months_in_year = sorted(
+                    complaint_all.loc[complaint_all["Year"] == y, "MonthNum"]
+                    .dropna()
+                    .astype(int)
+                    .unique()
+                    .tolist()
+                )
+                for m in months_in_year:
+                    for topic in ALLOWED_COMPLAINT_TOPICS:
+                        grid_records.append({
+                            "Year": y,
+                            "MonthNum": m,
+                            "MonthName": MONTH_NAME[m],
+                            "Topic": topic
+                        })
 
-            if topic_detail.empty or topic_summary.empty:
-                continue
+            grid_df = pd.DataFrame(grid_records)
+            if grid_df.empty:
+                return pd.DataFrame(columns=["Year", "MonthNum", "MonthName", "Topic", value_col])
 
-            topic_detail = topic_detail.sort_values(
-                "Current Month",
-                ascending=False
+            monthly_grid = grid_df.merge(
+                monthly_topic_total[["Year", "MonthNum", "MonthName", "Topic", value_col]],
+                on=["Year", "MonthNum", "MonthName", "Topic"],
+                how="left"
+            )
+            monthly_grid[value_col] = monthly_grid[value_col].fillna(0)
+            return monthly_grid
+
+        def build_yearly_avg_topic(monthly_grid, output_col_name):
+            if monthly_grid.empty:
+                return pd.DataFrame(columns=["Topic", previous_year, current_year, "Delta", "Delta %"]), pd.DataFrame()
+
+            yearly_avg_topic = (
+                monthly_grid
+                .groupby(["Year", "Topic"], as_index=False)
+                .agg({"Complaint Count": "mean"})
+                .rename(columns={"Complaint Count": output_col_name})
             )
 
-            topic_summary_row = topic_summary.iloc[0]
-            top_detail_row = topic_detail.iloc[0]
+            yearly_avg_pivot = yearly_avg_topic.pivot(
+                index="Topic",
+                columns="Year",
+                values=output_col_name
+            ).reset_index().fillna(0)
 
-            highest_increase_row = topic_detail.sort_values(
-                "Change",
-                ascending=False
-            ).iloc[0]
+            if previous_year not in yearly_avg_pivot.columns:
+                yearly_avg_pivot[previous_year] = 0
+            if current_year not in yearly_avg_pivot.columns:
+                yearly_avg_pivot[current_year] = 0
 
-            st.markdown(f"#### {topic}")
+            yearly_avg_pivot["Delta"] = yearly_avg_pivot[current_year] - yearly_avg_pivot[previous_year]
+            yearly_avg_pivot["Delta %"] = yearly_avg_pivot.apply(
+                lambda r: None if r[previous_year] == 0 else (r["Delta"] / r[previous_year] * 100),
+                axis=1
+            )
+            yearly_avg_pivot["TopicOrder"] = yearly_avg_pivot["Topic"].map({t: i for i, t in enumerate(ALLOWED_COMPLAINT_TOPICS)})
+            yearly_avg_pivot = yearly_avg_pivot.sort_values("TopicOrder").drop(columns=["TopicOrder"], errors="ignore")
 
-            topic_kpi_1, topic_kpi_2, topic_kpi_3 = st.columns(3)
+            yearly_avg_topic["TopicOrder"] = yearly_avg_topic["Topic"].map({t: i for i, t in enumerate(ALLOWED_COMPLAINT_TOPICS)})
+            yearly_avg_topic = yearly_avg_topic.sort_values(["TopicOrder", "Year"]).drop(columns=["TopicOrder"], errors="ignore")
+            return yearly_avg_pivot, yearly_avg_topic
 
-            with topic_kpi_1:
-                st.metric(
-                    f"{topic} Complaints",
-                    f"{int(topic_summary_row['Current Month']):,}",
-                    format_delta(
-                        topic_summary_row["Change"],
-                        topic_summary_row["Change %"]
-                    ),
-                    delta_color="inverse"
+        def render_three_kpi_cards(yearly_avg_pivot, metric_word, title_prefix, inverse_good=True, whole_number=False):
+            if yearly_avg_pivot.empty:
+                return
+
+            def fmt_avg_value(value):
+                return f"{value:,.0f}" if whole_number else f"{value:,.1f}"
+
+            def fmt_delta_value(current_value, previous_value):
+                change = current_value - previous_value
+                change_text = f"{change:+,.0f}" if whole_number else f"{change:+,.1f}"
+
+                if previous_value == 0 and current_value > 0:
+                    delta_text = f"{change_text} (New)"
+                elif previous_value == 0:
+                    delta_text = "0 (0.0%)" if whole_number else "0.0 (0.0%)"
+                else:
+                    pct = change / previous_value * 100
+                    delta_text = f"{change_text} ({pct:+.1f}%)"
+
+                good = change <= 0 if inverse_good else change >= 0
+                return delta_text, good
+
+            total_avg_current = yearly_avg_pivot[current_year].sum()
+            total_avg_previous = yearly_avg_pivot[previous_year].sum()
+            total_delta, total_good = fmt_delta_value(total_avg_current, total_avg_previous)
+
+            highest_topic_row = yearly_avg_pivot.sort_values(current_year, ascending=False).iloc[0]
+            lowest_topic_row = yearly_avg_pivot.sort_values(current_year, ascending=True).iloc[0]
+
+            kpi_1, kpi_2, kpi_3 = st.columns(3, gap="large")
+            with kpi_1:
+                render_premium_card(
+                    f"Average {metric_word}s {current_year}",
+                    fmt_avg_value(total_avg_current),
+                    f"vs {previous_year}: {total_delta}",
+                    total_good
+                )
+            with kpi_2:
+                topic_delta, topic_good = fmt_delta_value(highest_topic_row[current_year], highest_topic_row[previous_year])
+                render_premium_card(
+                    f"Highest Avg {metric_word} Topic {current_year}",
+                    highest_topic_row["Topic"],
+                    f"{fmt_avg_value(highest_topic_row[current_year])} | vs {previous_year}: {topic_delta}",
+                    topic_good
+                )
+            with kpi_3:
+                topic_delta, topic_good = fmt_delta_value(lowest_topic_row[current_year], lowest_topic_row[previous_year])
+                render_premium_card(
+                    f"Lowest Avg {metric_word} Topic {current_year}",
+                    lowest_topic_row["Topic"],
+                    f"{fmt_avg_value(lowest_topic_row[current_year])} | vs {previous_year}: {topic_delta}",
+                    topic_good
                 )
 
-            with topic_kpi_2:
-                st.metric(
-                    "Top Complaint Topic",
-                    str(top_detail_row["Complaint Topic"])[:70],
-                    format_delta(
-                        top_detail_row["Change"],
-                        top_detail_row["Change %"]
-                    ),
-                    delta_color="inverse"
-                )
+        def render_avg_bar(yearly_avg_topic, value_col, title):
+            avg_long = yearly_avg_topic.copy()
+            if avg_long.empty:
+                st.info(f"No data for {title}.")
+                return
 
-            with topic_kpi_3:
-                st.metric(
-                    "Highest Increase",
-                    str(highest_increase_row["Complaint Topic"])[:70],
-                    format_delta(
-                        highest_increase_row["Change"],
-                        highest_increase_row["Change %"]
-                    ),
-                    delta_color="inverse"
-                )
+            avg_long["Year"] = avg_long["Year"].astype(str)
 
-        comparison_long = latest_vs_previous.melt(
-            id_vars=["Topic", "Change", "Change %"],
-            value_vars=["Previous Month", "Current Month"],
-            var_name="Period",
-            value_name="Complaint Count"
+            fig_avg_topic = px.bar(
+                avg_long,
+                x="Topic",
+                y=value_col,
+                color="Year",
+                barmode="group",
+                text=value_col,
+                category_orders={"Topic": ALLOWED_COMPLAINT_TOPICS},
+                title=title,
+                color_discrete_map={
+                    str(previous_year): DASHING_YELLOW,
+                    str(current_year): FLAMBOYANT_PINK
+                }
+            )
+
+            fig_avg_topic.update_traces(
+                texttemplate="%{text:,.0f}",
+                textposition="outside",
+                textfont=dict(color=TEXT_MAIN, size=14)
+            )
+
+            apply_premium_plot_layout(fig_avg_topic, height=560, title_size=26)
+            fig_avg_topic.update_xaxes(
+                tickangle=-25,
+                categoryorder="array",
+                categoryarray=ALLOWED_COMPLAINT_TOPICS,
+                tickmode="array",
+                tickvals=ALLOWED_COMPLAINT_TOPICS,
+                ticktext=[TOPIC_TICK_LABELS.get(t, t) for t in ALLOWED_COMPLAINT_TOPICS]
+            )
+            fig_avg_topic.update_layout(
+                xaxis_title="TCSS Topic",
+                yaxis_title=value_col,
+                legend_title_text="Year"
+            )
+            st.plotly_chart(fig_avg_topic, width="stretch")
+
+        monthly_complaint_grid = build_monthly_topic_grid(complaint_only)
+        yearly_complaint_pivot, yearly_complaint_avg = build_yearly_avg_topic(
+            monthly_complaint_grid,
+            "Average Complaint Count"
         )
 
-        comparison_long["Month"] = comparison_long["Period"].replace({
-            "Previous Month": previous_month_label,
-            "Current Month": latest_month_text
-        })
-
-        fig_latest_compare = px.bar(
-            comparison_long,
-            x="Topic",
-            y="Complaint Count",
-            color="Period",
-            barmode="group",
-            text="Complaint Count",
-            hover_data={
-                "Topic": True,
-                "Month": True,
-                "Complaint Count": ":,",
-                "Change": ":,",
-                "Change %": ":.1f"
-            },
-            title=f"TCSS Topic Overview: {latest_month_text} vs {previous_month_label}",
-            color_discrete_map={
-                "Previous Month": DASHING_YELLOW,
-                "Current Month": FLAMBOYANT_PINK
-            }
+        monthly_commendation_grid = build_monthly_topic_grid(commendation_only)
+        yearly_commendation_pivot, yearly_commendation_avg = build_yearly_avg_topic(
+            monthly_commendation_grid,
+            "Average Commendation Count"
         )
 
-        fig_latest_compare.update_traces(
-            texttemplate="%{text:,.0f}",
-            textposition="outside"
+        st.markdown(f"### Average Complaint: {current_year} vs {previous_year}")
+        render_three_kpi_cards(
+            yearly_complaint_pivot,
+            metric_word="Complaint",
+            title_prefix="Average Complaint",
+            inverse_good=True
+        )
+        render_avg_bar(
+            yearly_complaint_avg,
+            "Average Complaint Count",
+            f"Average Complaint by Topic: {current_year} VS {previous_year}"
         )
 
-        fig_latest_compare.update_layout(
-            paper_bgcolor=DARK_BG,
-            plot_bgcolor=PLOT_BG,
-            font_color="white",
-            xaxis_title="TCSS Topic",
-            yaxis_title="Complaint Count",
-            height=560,
-            legend_title_text="Period",
-            margin=dict(l=40, r=40, t=80, b=130)
+        st.markdown(f"### Average Commendation: {current_year} vs {previous_year}")
+        render_three_kpi_cards(
+            yearly_commendation_pivot,
+            metric_word="Commendation",
+            title_prefix="Average Commendation",
+            inverse_good=False,
+            whole_number=True
+        )
+        render_avg_bar(
+            yearly_commendation_avg,
+            "Average Commendation Count",
+            f"Average Commendation by Topic: {current_year} VS {previous_year}"
         )
 
-        fig_latest_compare.update_xaxes(tickangle=-35)
-
-        st.plotly_chart(fig_latest_compare, width="stretch")
-
+        # ----- Complaint Topic Detail: Left line chart separates Complaint and Commendation, Right horizontal complaint-only bar -----
         st.markdown("### Complaint Topic Detail")
 
         selected_complaint_topic = st.selectbox(
             "Select TCSS Topic for Complaint Detail Chart",
-            options=ordered_topics,
-            index=0,
+            options=ALLOWED_COMPLAINT_TOPICS,
+            index=ALLOWED_COMPLAINT_TOPICS.index("In-flight Meal") if "In-flight Meal" in ALLOWED_COMPLAINT_TOPICS else 0,
             key="complaint_detail_topic_select"
         )
 
-        topic_detail = detail_compare_df[
-            detail_compare_df["Topic"] == selected_complaint_topic
-        ].copy()
+        detail_left, detail_right = st.columns([1.05, 1], gap="large")
 
-        topic_detail = topic_detail.sort_values(
-            "Current Month",
-            ascending=False
-        )
+        with detail_left:
+            topic_complaint_yoy = monthly_complaint_grid[
+                monthly_complaint_grid["Topic"] == selected_complaint_topic
+            ].copy()
+            topic_complaint_yoy["Metric"] = "Complaint"
 
-        if topic_detail.empty:
-            st.info(f"No complaint detail found for {selected_complaint_topic}.")
+            topic_commendation_yoy = monthly_commendation_grid[
+                monthly_commendation_grid["Topic"] == selected_complaint_topic
+            ].copy()
+            topic_commendation_yoy["Metric"] = "Commendation"
 
-        else:
-            selected_topic_current_total = int(
-                topic_detail["Current Month"].sum()
+            metric_yoy = pd.concat([topic_complaint_yoy, topic_commendation_yoy], ignore_index=True)
+            metric_yoy["Year"] = metric_yoy["Year"].astype(int)
+            metric_yoy["MonthName"] = pd.Categorical(
+                metric_yoy["MonthName"],
+                categories=MONTH_ORDER,
+                ordered=True
+            )
+            metric_yoy = metric_yoy.sort_values(["Metric", "Year", "MonthNum"])
+
+            fig_detail_line = go.Figure()
+            trace_settings = [
+                ("Complaint", previous_year, DASHING_YELLOW, "dash", 2.0),
+                ("Complaint", current_year, FLAMBOYANT_PINK, "solid", 3.4),
+                ("Commendation", previous_year, "#84CC16", "dash", 2.0),
+                ("Commendation", current_year, "#16A34A", "solid", 3.4),
+            ]
+
+            for metric_name, year_value, line_color, dash_style, line_width in trace_settings:
+                trace_df = metric_yoy[
+                    (metric_yoy["Metric"] == metric_name) &
+                    (metric_yoy["Year"] == year_value)
+                ].copy()
+                if trace_df.empty:
+                    continue
+
+                fig_detail_line.add_trace(
+                    go.Scatter(
+                        x=trace_df["MonthName"],
+                        y=trace_df["Complaint Count"],
+                        mode="lines+markers",
+                        name=f"{metric_name} {year_value}",
+                        line=dict(color=line_color, dash=dash_style, width=line_width),
+                        marker=dict(size=7),
+                        hovertemplate=(
+                            f"<b>{metric_name} {year_value}</b><br>"
+                            "Month: %{x}<br>"
+                            "Count: %{y:,.0f}<extra></extra>"
+                        )
+                    )
+                )
+
+            fig_detail_line.update_layout(
+                title=f"{selected_complaint_topic}: Complaint vs Commendation Trend YoY",
+                xaxis_title="Month",
+                yaxis_title="Count",
+                legend_title_text="Metric / Year"
+            )
+            apply_premium_plot_layout(fig_detail_line, height=540, title_size=23)
+            fig_detail_line.update_xaxes(categoryorder="array", categoryarray=MONTH_ORDER)
+            st.plotly_chart(fig_detail_line, width="stretch")
+
+        with detail_right:
+            selected_detail = complaint_only[
+                complaint_only["Topic"] == selected_complaint_topic
+            ].copy()
+
+            selected_detail_avg = (
+                selected_detail
+                .groupby(["Year", "Complaint Topic"], as_index=False)
+                .agg({"Complaint Count": "mean"})
             )
 
-            selected_topic_previous_total = int(
-                topic_detail["Previous Month"].sum()
+            selected_detail_pivot = selected_detail_avg.pivot(
+                index="Complaint Topic",
+                columns="Year",
+                values="Complaint Count"
+            ).reset_index().fillna(0)
+
+            if previous_year not in selected_detail_pivot.columns:
+                selected_detail_pivot[previous_year] = 0
+            if current_year not in selected_detail_pivot.columns:
+                selected_detail_pivot[current_year] = 0
+
+            selected_detail_pivot = (
+                selected_detail_pivot
+                .sort_values(current_year, ascending=False)
+                .head(10)
+                .sort_values(current_year, ascending=True)
             )
 
-            selected_topic_change = (
-                selected_topic_current_total -
-                selected_topic_previous_total
+            selected_detail_long = selected_detail_pivot.melt(
+                id_vars="Complaint Topic",
+                value_vars=[previous_year, current_year],
+                var_name="Year",
+                value_name="Average Complaint Count"
             )
+            selected_detail_long["Year"] = selected_detail_long["Year"].astype(str)
 
-            if selected_topic_previous_total > 0:
-                selected_topic_change_pct = (
-                    selected_topic_change /
-                    selected_topic_previous_total *
-                    100
-                )
-
-                selected_topic_delta_text = (
-                    f"{selected_topic_change:+,} "
-                    f"({selected_topic_change_pct:+.1f}%)"
-                )
-            elif selected_topic_current_total > 0:
-                selected_topic_delta_text = (
-                    f"{selected_topic_change:+,} (New)"
-                )
-            else:
-                selected_topic_delta_text = "0 (0.0%)"
-
-            selected_kpi_1, selected_kpi_2, selected_kpi_3 = st.columns(3)
-
-            with selected_kpi_1:
-                st.metric(
-                    f"{selected_complaint_topic} Complaints",
-                    f"{selected_topic_current_total:,}",
-                    selected_topic_delta_text,
-                    delta_color="inverse"
-                )
-
-            with selected_kpi_2:
-                selected_top_detail = topic_detail.iloc[0]
-
-                st.metric(
-                    "Top Complaint Topic",
-                    str(selected_top_detail["Complaint Topic"])[:70],
-                    format_delta(
-                        selected_top_detail["Change"],
-                        selected_top_detail["Change %"]
-                    ),
-                    delta_color="inverse"
-                )
-
-            with selected_kpi_3:
-                selected_highest_increase = topic_detail.sort_values(
-                    "Change",
-                    ascending=False
-                ).iloc[0]
-
-                st.metric(
-                    "Highest Increase",
-                    str(selected_highest_increase["Complaint Topic"])[:70],
-                    format_delta(
-                        selected_highest_increase["Change"],
-                        selected_highest_increase["Change %"]
-                    ),
-                    delta_color="inverse"
-                )
-
-            top_n_detail = topic_detail.head(12).copy()
-
-            detail_long = top_n_detail.melt(
-                id_vars=[
-                    "Topic",
-                    "Complaint Topic",
-                    "Change",
-                    "Change %"
-                ],
-                value_vars=[
-                    "Previous Month",
-                    "Current Month"
-                ],
-                var_name="Period",
-                value_name="Complaint Count"
-            )
-
-            detail_long["Month"] = detail_long["Period"].replace({
-                "Previous Month": previous_month_label,
-                "Current Month": latest_month_text
-            })
-
-            fig_detail_compare = px.bar(
-                detail_long,
-                x="Complaint Count",
+            fig_detail_bar = px.bar(
+                selected_detail_long,
+                x="Average Complaint Count",
                 y="Complaint Topic",
-                color="Period",
+                color="Year",
                 barmode="group",
                 orientation="h",
-                text="Complaint Count",
-                hover_data={
-                    "Topic": True,
-                    "Complaint Topic": True,
-                    "Month": True,
-                    "Complaint Count": ":,",
-                    "Change": ":,",
-                    "Change %": ":.1f"
-                },
-                title=(
-                    f"{selected_complaint_topic}: Complaint Topic Detail "
-                    f"{latest_month_text} vs {previous_month_label}"
-                ),
+                text="Average Complaint Count",
+                title=f"{selected_complaint_topic}: Complaint Topic Average",
                 color_discrete_map={
-                    "Previous Month": DASHING_YELLOW,
-                    "Current Month": FLAMBOYANT_PINK
+                    str(previous_year): DASHING_YELLOW,
+                    str(current_year): FLAMBOYANT_PINK
                 }
             )
 
-            fig_detail_compare.update_traces(
+            fig_detail_bar.update_traces(
                 texttemplate="%{text:,.0f}",
-                textposition="outside"
+                textposition="outside",
+                textfont=dict(color=TEXT_MAIN, size=13)
             )
 
-            fig_detail_compare.update_layout(
-                paper_bgcolor=DARK_BG,
-                plot_bgcolor=PLOT_BG,
-                font_color="white",
-                xaxis_title="Complaint Count",
+            apply_premium_plot_layout(fig_detail_bar, height=540, title_size=23)
+            fig_detail_bar.update_layout(
+                xaxis_title="Average Complaint Count",
                 yaxis_title="Complaint Topic",
-                height=620,
-                legend_title_text="Period",
-                margin=dict(l=40, r=80, t=80, b=50),
-                yaxis=dict(categoryorder="total ascending")
+                legend_title_text="Year"
             )
+            st.plotly_chart(fig_detail_bar, width="stretch")
 
-            st.plotly_chart(
-                fig_detail_compare,
-                width="stretch"
-            )
+        with st.expander(f"Show {selected_complaint_topic} Complaint / Commendation Topic Data"):
+            selected_raw = complaint_all[complaint_all["Topic"] == selected_complaint_topic].copy()
+            selected_raw = selected_raw.sort_values(["Year", "MonthNum", "Is Commendation", "Complaint Count"], ascending=[False, False, True, False])
+            render_light_table(selected_raw, height=360, hide_index=True)
 
-            display_topic_detail = topic_detail.copy()
-
-            display_topic_detail["Change %"] = (
-                display_topic_detail["Change %"]
-                .apply(
-                    lambda x: "New"
-                    if pd.isna(x)
-                    else f"{x:.1f}%"
-                )
-            )
-
-            with st.expander(
-                f"Show {selected_complaint_topic} Complaint Topic Data"
-            ):
-                st.dataframe(
-                    display_topic_detail[
-                        [
-                            "Topic",
-                            "Complaint Topic",
-                            "Previous Month",
-                            "Current Month",
-                            "Change",
-                            "Change %"
-                        ]
-                    ],
-                    width="stretch",
-                    hide_index=True
-                )
-
-        st.markdown("### Complaint Count Trend: Year over Year by Topic")
-
-        yearly_topic_total = (
-            complaint_all
-            .groupby(
-                [
-                    "Year",
-                    "MonthNum",
-                    "MonthName",
-                    "Topic"
-                ],
-                as_index=False
-            )
-            .agg({"Complaint Count": "sum"})
-        )
-
-        top_detail_by_period = (
-            complaint_all
-            .sort_values("Complaint Count", ascending=False)
-            .drop_duplicates(
-                subset=[
-                    "Year",
-                    "MonthNum",
-                    "Topic"
-                ],
-                keep="first"
-            )
-            [
-                [
-                    "Year",
-                    "MonthNum",
-                    "Topic",
-                    "Complaint Topic",
-                    "Complaint Count"
-                ]
-            ]
-            .rename(columns={
-                "Complaint Topic": "Top Complaint Detail",
-                "Complaint Count": "Top Detail Count"
-            })
-        )
-
-        yearly_topic_total = yearly_topic_total.merge(
-            top_detail_by_period,
-            on=[
-                "Year",
-                "MonthNum",
-                "Topic"
-            ],
-            how="left"
-        )
-
-        yearly_topic_total["Year"] = (
-            yearly_topic_total["Year"]
-            .astype(int)
-            .astype(str)
-        )
-
-        yearly_topic_total["MonthName"] = pd.Categorical(
-            yearly_topic_total["MonthName"],
-            categories=MONTH_ORDER,
-            ordered=True
-        )
-
-        yearly_topic_total = yearly_topic_total.sort_values(
-            [
-                "Topic",
-                "Year",
-                "MonthNum"
-            ]
-        )
-
-        yoy_topics = sorted(
-            yearly_topic_total["Topic"]
-            .dropna()
-            .unique()
-        )
-
-        for i in range(0, len(yoy_topics), 2):
-            trend_col_1, trend_col_2 = st.columns(2)
-
-            for chart_col, topic in zip(
-                [trend_col_1, trend_col_2],
-                yoy_topics[i:i + 2]
-            ):
-                topic_yoy = yearly_topic_total[
-                    yearly_topic_total["Topic"] == topic
-                ].copy()
-
-                with chart_col:
-                    fig_yoy_complaint = px.line(
-                        topic_yoy,
-                        x="MonthName",
-                        y="Complaint Count",
-                        color="Year",
-                        markers=True,
-                        category_orders={
-                            "MonthName": MONTH_ORDER
-                        },
-                        hover_data={
-                            "Year": True,
-                            "MonthName": True,
-                            "Complaint Count": ":,",
-                            "Top Complaint Detail": True,
-                            "Top Detail Count": ":,"
-                        },
-                        title=f"{topic} - Complaint Count YoY",
-                        color_discrete_map={
-                            "2025": DASHING_YELLOW,
-                            "2026": FLAMBOYANT_PINK
-                        }
-                    )
-
-                    for trace in fig_yoy_complaint.data:
-                        if trace.name == "2025":
-                            trace.update(
-                                line=dict(
-                                    dash="dash",
-                                    width=1.5
-                                ),
-                                marker=dict(
-                                    size=6
-                                )
-                            )
-                        elif trace.name == "2026":
-                            trace.update(
-                                line=dict(
-                                    dash="solid",
-                                    width=3.2
-                                ),
-                                marker=dict(
-                                    size=8
-                                )
-                            )
-                        else:
-                            trace.update(
-                                line=dict(
-                                    dash="solid",
-                                    width=2.2
-                                ),
-                                marker=dict(
-                                    size=7
-                                )
-                            )
-
-                    fig_yoy_complaint.update_layout(
-                        paper_bgcolor=DARK_BG,
-                        plot_bgcolor=PLOT_BG,
-                        font_color="white",
-                        xaxis_title="Month",
-                        yaxis_title="Complaint Count",
-                        height=420,
-                        legend_title_text="Year",
-                        margin=dict(l=40, r=40, t=70, b=70)
-                    )
-
-                    fig_yoy_complaint.update_xaxes(
-                        categoryorder="array",
-                        categoryarray=MONTH_ORDER
-                    )
-
-                    st.plotly_chart(
-                        fig_yoy_complaint,
-                        width="stretch"
-                    )
-
-        with st.expander("Show Complaint YoY Data"):
-            display_yoy = yearly_topic_total.copy()
-
-            display_yoy["Complaint Count"] = (
-                display_yoy["Complaint Count"]
-                .astype(int)
-            )
-
-            display_yoy["Top Detail Count"] = pd.to_numeric(
-                display_yoy["Top Detail Count"],
-                errors="coerce"
-            ).fillna(0).astype(int)
-
-            st.dataframe(
-                display_yoy,
-                width="stretch",
-                hide_index=True
-            )
 
 
 # -----------------------------
 # TOP COMPLAINTS - ORIGINAL TEXT TABLE
 # -----------------------------
-st.subheader("Top Complaints")
+section_header("Top Complaints")
 
 complaint_df = get_top_complaints(
     raw_df=raw_df,
@@ -2915,15 +3260,11 @@ if raw_df.empty:
 elif complaint_df.empty:
     st.info("No complaint text found for the selected filters.")
 else:
-    st.dataframe(
-        complaint_df,
-        width="stretch",
-        hide_index=True
-    )
+    render_light_table(complaint_df, height=460, hide_index=True)
 
 
 # -----------------------------
 # DATA TABLE
 # -----------------------------
 with st.expander("Show Data Table"):
-    st.dataframe(filtered_df, width="stretch")
+    render_light_table(filtered_df, height=520, hide_index=True)
