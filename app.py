@@ -2511,6 +2511,95 @@ def normalize_nationality_group(value) -> str:
     return clean_text(value)
 
 
+def normalize_profile_category(value, label_col: str) -> str:
+    """Canonicalize passenger profile categories before charting.
+
+    This is intentionally conservative. TCSS PDF extraction can create duplicate-looking
+    labels such as ``Baby Boomer``, ``Baby Boomers`` or ``Baby Boomer (1946-1964)``.
+    Plotly treats those as separate slices even though they represent the same cohort.
+    The function standardizes common profile categories and leaves unknown labels intact.
+    """
+    raw = clean_text(value)
+    if raw == "" or raw.lower() in {"nan", "none", "null"}:
+        return ""
+
+    key = re.sub(r"[^a-z0-9]+", " ", raw.lower()).strip()
+    compact = re.sub(r"[^a-z0-9]+", "", raw.lower())
+    label_key = normalize_key(label_col)
+
+    if label_key in {"AGEGROUP", "AGE", "GENERATION", "GEN"}:
+        # Explicitly merge all Baby Boomer variants into one slice.
+        if "baby" in key and "boomer" in key:
+            return "Baby Boomer"
+        if "babyboomer" in compact or "boomers" in compact or compact == "boomer":
+            return "Baby Boomer"
+        if re.search(r"\bgen\s*z\b", key) or "generationz" in compact or compact == "genz":
+            return "Gen Z"
+        if re.search(r"\bgen\s*y\b", key) or "generationy" in compact or compact == "geny" or "millennial" in key:
+            return "Gen Y"
+        if re.search(r"\bgen\s*x\b", key) or "generationx" in compact or compact == "genx":
+            return "Gen X"
+        if "silent" in key:
+            return "Silent Generation"
+        if "alpha" in key:
+            return "Gen Alpha"
+
+    if label_key in {"GENDER", "SEX"}:
+        if key in {"m", "male", "man"} or key.startswith("male "):
+            return "Male"
+        if key in {"f", "female", "woman"} or key.startswith("female "):
+            return "Female"
+        if "other" in key or "prefer" in key or "unknown" in key:
+            return "Others"
+
+    if label_key in {"PURPOSE", "PURPOSEOFJOURNEY", "JOURNEYPURPOSE", "TRAVELPURPOSE", "PURPOSEJOURNEY"}:
+        if "business" in key or "work" in key:
+            return "Business"
+        if "leisure" in key or "holiday" in key or "vacation" in key:
+            return "Leisure"
+        if "visit" in key and ("friend" in key or "relative" in key or "family" in key):
+            return "Visit Friends / Relatives"
+        if "other" in key:
+            return "Others"
+
+    return raw
+
+
+def collapse_profile_categories(df: pd.DataFrame, label_col: str) -> pd.DataFrame:
+    """Merge duplicate profile categories after canonicalization while preserving metrics."""
+    if df.empty or label_col not in df.columns:
+        return df
+    out = df.copy()
+    out[label_col] = out[label_col].apply(lambda x: normalize_profile_category(x, label_col))
+    out = out[out[label_col].astype(str).str.strip() != ""].copy()
+    if out.empty:
+        return out
+
+    agg = {}
+    if "Count" in out.columns:
+        agg["Count"] = "sum"
+    if "Percent" in out.columns:
+        # Recomputed below when Count exists; otherwise sum and re-normalize.
+        agg["Percent"] = "sum"
+    other_cols = [c for c in out.columns if c not in {label_col, "Count", "Percent"}]
+    for col in other_cols:
+        agg[col] = "first"
+
+    out = out.groupby(label_col, as_index=False).agg(agg)
+    if "Count" in out.columns and safe_numeric(out["Count"]).sum() > 0:
+        out["Count"] = safe_numeric(out["Count"])
+        total = float(out["Count"].sum())
+        out["Percent"] = out["Count"] / total * 100 if total > 0 else 0
+        return out.sort_values("Count", ascending=False)
+    if "Percent" in out.columns:
+        out["Percent"] = safe_numeric(out["Percent"])
+        total_pct = float(out["Percent"].sum())
+        out["Percent"] = out["Percent"] / total_pct * 100 if total_pct > 0 else 0
+        out["Count"] = out["Percent"]
+        return out.sort_values("Percent", ascending=False)
+    return out
+
+
 def melt_wide_profile_if_needed(profile_df: pd.DataFrame, selected_months: List[str], label_col: str) -> pd.DataFrame:
     """Support passenger-profile sheets stored in wide format.
 
@@ -2543,6 +2632,7 @@ def melt_wide_profile_if_needed(profile_df: pd.DataFrame, selected_months: List[
     id_vars = [c for c in ["Month"] if c in temp.columns]
     melted = temp.melt(id_vars=id_vars, value_vars=value_cols, var_name=label_col, value_name="__Value")
     melted[label_col] = melted[label_col].astype(str).str.strip()
+    melted[label_col] = melted[label_col].apply(lambda x: normalize_profile_category(x, label_col))
     melted["__Value"] = safe_numeric(melted["__Value"])
     melted = melted[(melted[label_col] != "") & (melted["__Value"] > 0)].copy()
     if melted.empty:
@@ -2606,6 +2696,7 @@ def aggregate_profile_for_selected_months(profile_df: pd.DataFrame, selected_mon
         return pd.DataFrame()
 
     temp[actual_label_col] = temp[actual_label_col].astype(str).str.strip()
+    temp[actual_label_col] = temp[actual_label_col].apply(lambda x: normalize_profile_category(x, label_col))
     temp = temp[temp[actual_label_col] != ""].copy()
     if temp.empty:
         return pd.DataFrame()
@@ -3861,6 +3952,7 @@ def plot_profile_donut(plot_df: pd.DataFrame, label_col: str, title: str, colors
     if plot_df.empty:
         st.info(f"No data for {title}")
         return
+    plot_df = collapse_profile_categories(plot_df, label_col)
     value_col = "Count" if "Count" in plot_df.columns and safe_numeric(plot_df["Count"]).sum() > 0 else "Percent"
     plot_df = prepare_donut_data(plot_df, label_col, value_col, max_slices=6 if compact else 7)
     fig = px.pie(
@@ -3902,6 +3994,13 @@ def render_passenger_profile():
     render_section_header('Passenger Profile')
     gender_df = aggregate_profile_for_selected_months(get_extra_sheet(extra_data, "gender", "sex", "gender profile"), selected_months, "Gender")
     age_df = aggregate_profile_for_selected_months(get_extra_sheet(extra_data, "age_group", "age group", "agegroup", "generation", "gen"), selected_months, "Age Group")
+    age_df = collapse_profile_categories(age_df, "Age Group")
+    # Keep age cohorts in a stable executive order and prevent duplicate Baby Boomer slices.
+    if not age_df.empty and "Age Group" in age_df.columns:
+        age_order = ["Gen Z", "Gen Y", "Gen X", "Baby Boomer", "Silent Generation", "Gen Alpha", "Others"]
+        age_df["__age_order"] = age_df["Age Group"].apply(lambda x: age_order.index(x) if x in age_order else len(age_order))
+        sort_metric = "Count" if "Count" in age_df.columns else ("Percent" if "Percent" in age_df.columns else "__age_order")
+        age_df = age_df.sort_values(["__age_order", sort_metric], ascending=[True, False]).drop(columns=["__age_order"], errors="ignore")
     purpose_df = aggregate_profile_for_selected_months(get_extra_sheet(extra_data, "purpose", "purpose of journey", "journey purpose", "travel purpose"), selected_months, "Purpose")
 
     if IS_MOBILE_MODE:
