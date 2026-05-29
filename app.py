@@ -1792,9 +1792,9 @@ section[data-testid="stSidebar"][aria-expanded="false"] ~ div .stPlotlyChart {
 
 
 
-/* V25: Complaint by Station 7:3 map/table layout + reliable collapsed-sidebar full-width canvas. */
+/* V26: Complaint by Station 6:4 map/table layout + reliable collapsed-sidebar full-width canvas. */
 [data-testid="column"]:has(.station-ranking-panel) {
-    min-width: 280px !important;
+    min-width: 320px !important;
 }
 .station-ranking-panel {
     width: 100% !important;
@@ -2380,7 +2380,13 @@ def enable_geo_zoom(fig, *, fitbounds: bool = True):
     return fig
 
 
-def dataframe_white(df: pd.DataFrame, height: int = 360):
+def dataframe_white(df: pd.DataFrame, height: int = 360, max_styled_cells: int = 200_000):
+    """Render dataframe safely; avoid Pandas Styler for large tables."""
+    if df is None:
+        df = pd.DataFrame()
+    if int(getattr(df, "size", 0)) > max_styled_cells:
+        st.dataframe(df, use_container_width=True, height=height, hide_index=True)
+        return
     st.dataframe(
         df.style.set_properties(
             **{
@@ -3065,6 +3071,7 @@ def extract_nationalities_from_raw_text(raw_df: pd.DataFrame) -> pd.DataFrame:
 @st.cache_data
 def load_summary_complaint() -> pd.DataFrame:
     possible_names = [
+        "Summary Complaint Detail.xlsx",
         "Summary Complaint.xlsx",
         "Summary_Complaint.xlsx",
         "summary_complaint.xlsx",
@@ -3161,7 +3168,7 @@ def load_summary_complaint() -> pd.DataFrame:
 COMPLAINT_RAW_FOLDER_DEFAULT = "Complaint_Raw"
 COMPLAINT_DETAIL_OUTPUT_DEFAULT = "Summary Complaint Detail.xlsx"
 COMPLAINT_DETAIL_SHEET_NAMES = ["Complaint Detail", "Complaint Details", "Complaint", "Complaints", "Detail"]
-COMPLAINT_OUTPUT_COLUMNS = ["Main Topic", "Topic", "FLIGHT", "DATE", "A/C TYPE", "FROM", "comment (text)"]
+COMPLAINT_OUTPUT_COLUMNS = ["Main Topic", "Topic", "FLIGHT", "Class", "DATE", "A/C TYPE", "FROM", "comment (text)"]
 COMPLAINT_REQUIRED_RAW_SHEETS = [
     "Check-in Details",
     "Lounge Details",
@@ -3632,6 +3639,7 @@ def load_complaint_detail_data(signature: Optional[Tuple[object, ...]] = None) -
         "Main Topic": ["Main Topic", "Touchpoint", "TCSS Topic", "Topic Group", "Service Touchpoint"],
         "Topic": ["Topic", "Complaint Topic", "Sub Topic", "Category", "Issue Topic"],
         "FLIGHT": ["FLIGHT", "Flight", "Flt.No.", "Flt No", "Flight No", "Flight Number"],
+        "Class": ["Class", "Cabin", "Cabin Class", "Travel Class", "Segment"],
         "DATE": ["DATE", "Date", "Flight Date"],
         "A/C TYPE": ["A/C TYPE", "A/C", "AC", "Aircraft", "Aircraft Type", "A/C Type"],
         "FROM": ["FROM", "From", "Form", "Arrived to", "Station", "Origin"],
@@ -3659,6 +3667,7 @@ def load_complaint_detail_data(signature: Optional[Tuple[object, ...]] = None) -
     passthrough_month = raw["Month"].copy() if "Month" in raw.columns else pd.Series([""] * len(raw), index=raw.index)
     raw = raw[COMPLAINT_OUTPUT_COLUMNS].copy()
     raw["FLIGHT"] = raw["FLIGHT"].apply(clean_flight_no)
+    raw["Class"] = raw["Class"].apply(normalize_complaint_class) if "Class" in raw.columns else ""
     raw["DATE"] = pd.to_datetime(raw["DATE"], errors="coerce")
     raw["Month"] = raw["DATE"].dt.strftime("%Y-%m")
     raw["Month"] = raw["Month"].fillna(passthrough_month.astype(str).str.slice(0, 7))
@@ -3668,7 +3677,7 @@ def load_complaint_detail_data(signature: Optional[Tuple[object, ...]] = None) -
     lavatory_mask = raw["Topic"].str.contains("lavatory|toilet|amenity", case=False, na=False)
     raw.loc[lavatory_mask, "Topic Canonical"] = "Lavatory Cleanliness"
     raw["comment (text)"] = raw["comment (text)"].apply(clean_text)
-    raw = raw[(raw["FLIGHT"] != "") & (raw["comment (text)"] != "")].copy()
+    raw = raw[(raw["FLIGHT"] != "")].copy()
     raw = raw.drop_duplicates(["Main Topic", "Topic", "FLIGHT", "DATE", "comment (text)"], keep="first")
     return raw.reset_index(drop=True)
 
@@ -3683,7 +3692,7 @@ def load_complaint_detail_data(signature: Optional[Tuple[object, ...]] = None) -
 # parser without removing earlier code paths that are still useful for fallback.
 from difflib import SequenceMatcher
 
-COMPLAINT_PARSER_VERSION = "2026-05-v16-taxonomy-station-02"
+COMPLAINT_PARSER_VERSION = "2026-05-v27-detail-class-commendation"
 
 COMPLAINT_MAIN_TOPIC_ORDER = [
     "Arrival & Baggage Handling",
@@ -4151,7 +4160,6 @@ def build_summary_complaint_from_raw_folder(raw_folder: str, output_file: str = 
         detail = detail[
             (detail["FLIGHT"] != "") &
             (detail["FROM"] != "") &
-            (detail["comment (text)"] != "") &
             (detail["DATE"].notna())
         ].copy()
         detail = detail.drop_duplicates(["Main Topic", "Topic", "FLIGHT", "DATE", "comment (text)"], keep="first")
@@ -4352,6 +4360,395 @@ def has_meaningful_commendation_text(text: str) -> bool:
     return bool(re.search(r"[A-Za-z0-9\u0E00-\u0E7F]", cleaned))
 
 
+
+# -----------------------------
+# PREMIUM V27: DETAIL-ACCURATE COMPLAINT PARSER WITH CABIN CLASS
+# -----------------------------
+# This override repairs the raw complaint consolidation layer.  It keeps the
+# dashboard behaviour from previous premium versions, but rebuilds
+# `Summary Complaint Detail.xlsx` with more accurate horizontal block parsing,
+# class detection, and stronger safeguards against missing detail rows.
+
+CLASS_ALIASES_FOR_COMPLAINT = {
+    "first": "First",
+    "firstclass": "First",
+    "f": "First",
+    "business": "Business",
+    "businessclass": "Business",
+    "biz": "Business",
+    "bc": "Business",
+    "c": "Business",
+    "economyplus": "Economy Plus",
+    "ecoplus": "Economy Plus",
+    "premiumeconomy": "Economy Plus",
+    "premiumeco": "Economy Plus",
+    "pe": "Economy Plus",
+    "economy": "Economy",
+    "economyclass": "Economy",
+    "eco": "Economy",
+    "ey": "Economy",
+    "y": "Economy",
+}
+
+
+def normalize_complaint_class(value: object) -> str:
+    """Map free-form class labels to the 4 requested class groups."""
+    raw = clean_text(value)
+    key = complaint_norm(raw)
+    if not key:
+        return ""
+    if key in CLASS_ALIASES_FOR_COMPLAINT:
+        return CLASS_ALIASES_FOR_COMPLAINT[key]
+    if "first" in key:
+        return "First"
+    if "business" in key or key in {"bc", "biz", "c"}:
+        return "Business"
+    if "economyplus" in key or "ecoplus" in key or "premiumeconomy" in key or "premiumeco" in key:
+        return "Economy Plus"
+    if "economy" in key or key in {"eco", "ey", "y"}:
+        return "Economy"
+    return ""
+
+
+def parse_excel_date(value: object) -> pd.Timestamp:
+    """Parse Excel/typed dates without creating 1970 timestamps.
+
+    TCSS complaint files mix true Excel datetimes, strings such as 13-4-26,
+    and occasionally empty cells.  Numeric values are treated as Excel serial
+    dates only when they are in a realistic contemporary range.
+    """
+    if value is None or (isinstance(value, float) and pd.isna(value)):
+        return pd.NaT
+    if isinstance(value, pd.Timestamp):
+        return value
+    if hasattr(value, "year") and hasattr(value, "month") and hasattr(value, "day"):
+        try:
+            parsed = pd.Timestamp(value)
+            return parsed if 1990 <= parsed.year <= 2100 else pd.NaT
+        except Exception:
+            pass
+    if isinstance(value, (int, float)) and not pd.isna(value):
+        if 20000 <= float(value) <= 80000:
+            try:
+                parsed = pd.to_datetime("1899-12-30") + pd.to_timedelta(float(value), unit="D")
+                return parsed if 1990 <= parsed.year <= 2100 else pd.NaT
+            except Exception:
+                return pd.NaT
+        return pd.NaT
+    text_value = clean_text(value)
+    if not text_value:
+        return pd.NaT
+    for dayfirst in (True, False):
+        parsed = pd.to_datetime(text_value, errors="coerce", dayfirst=dayfirst)
+        if pd.notna(parsed) and 1990 <= parsed.year <= 2100:
+            return parsed
+    return pd.NaT
+
+
+def is_from_header(value: object) -> bool:
+    key = complaint_norm(value)
+    return key in {
+        "from", "form", "arrivedto", "arriveto", "arrivalto", "destination", "to",
+        "station", "origin", "departfrom", "departedfrom", "city", "airport"
+    }
+
+
+def is_ac_header(value: object) -> bool:
+    key = complaint_norm(value)
+    return key in {"ac", "actype", "aircraft", "aircrafttype", "aircraftcode", "aftype", "aircrafttypecode"}
+
+
+def find_nearby_class(raw_sheet: pd.DataFrame, header_idx: int, flight_col: int) -> str:
+    """Infer cabin class around a horizontal complaint block.
+
+    Class is often in the far-left cell of a row that contains several repeated
+    complaint blocks.  Search the same row from the Flight header back to the
+    first column, then a few rows above.  This fixes cases such as Check-in
+    where the second/third horizontal block still belongs to the Business or
+    Economy section even though the class label is many columns to the left.
+    """
+    ncols = raw_sheet.shape[1]
+    search_rows = list(range(max(0, header_idx - 6), header_idx + 1))[::-1]
+    same_row_cols = list(range(0, min(ncols, flight_col + 1)))
+    for col in reversed(same_row_cols):
+        class_name = normalize_complaint_class(raw_sheet.iat[header_idx, col])
+        if class_name:
+            return class_name
+    for row in search_rows:
+        row_cols = list(range(0, min(ncols, flight_col + 1)))
+        for col in reversed(row_cols):
+            class_name = normalize_complaint_class(raw_sheet.iat[row, col])
+            if class_name:
+                return class_name
+    return ""
+
+
+def find_complaint_topic_column(row_values: List[object], flight_col: int) -> Optional[int]:
+    search_end = min(len(row_values), flight_col + 14)
+    from_col = None
+    for idx in range(flight_col + 1, search_end):
+        if is_from_header(row_values[idx]):
+            from_col = idx
+            break
+    start_idx = (from_col + 1) if from_col is not None else flight_col + 4
+    for idx in range(start_idx, search_end):
+        if is_valid_complaint_topic_header(row_values[idx]):
+            return idx
+    return None
+
+
+def detect_complaint_block(row_values: List[object], flight_col: int) -> Optional[Dict[str, int]]:
+    search_end = min(len(row_values), flight_col + 14)
+    date_col = None
+    ac_col = None
+    from_col = None
+    for idx in range(flight_col + 1, search_end):
+        val = row_values[idx]
+        if date_col is None and is_date_header(val):
+            date_col = idx
+            continue
+        if ac_col is None and is_ac_header(val):
+            ac_col = idx
+            continue
+        if from_col is None and is_from_header(val):
+            from_col = idx
+            continue
+    topic_col = find_complaint_topic_column(row_values, flight_col)
+    if topic_col is None or date_col is None or ac_col is None or from_col is None:
+        return None
+    topic_name = row_values[topic_col]
+    if not is_valid_complaint_topic_header(topic_name):
+        return None
+    return {"flight_col": flight_col, "date_col": date_col, "ac_col": ac_col, "from_col": from_col, "topic_col": topic_col}
+
+
+def _empty_complaint_detail_df() -> pd.DataFrame:
+    return pd.DataFrame(columns=COMPLAINT_OUTPUT_COLUMNS + ["Month", "Source File", "Source Sheet"])
+
+
+def extract_complaint_sheet(raw_sheet: pd.DataFrame, sheet_name: str, source_file: Path, default_month: Optional[str]) -> pd.DataFrame:
+    """Extract detail rows from each visually formatted complaint sheet.
+
+    The source uses multiple horizontal blocks.  Each block begins with a
+    header row containing Flight/Date/A-C/From plus the complaint topic as the
+    final header.  This parser scans all such blocks, attaches cabin class,
+    and keeps valid detail rows until the next header appears in the same
+    block.
+    """
+    records: List[Dict[str, object]] = []
+    if raw_sheet.empty:
+        return _empty_complaint_detail_df()
+
+    raw_sheet = raw_sheet.copy()
+    sheet_main_topic = infer_complaint_main_topic(sheet_name)
+    header_rows: List[Tuple[int, Dict[str, int], str, str, str]] = []
+
+    for row_idx in range(len(raw_sheet)):
+        row_values = raw_sheet.iloc[row_idx].tolist()
+        for col_idx, value in enumerate(row_values):
+            if not is_flight_header(value):
+                continue
+            block = detect_complaint_block(row_values, col_idx)
+            if block is None:
+                continue
+            raw_topic_name = clean_text(row_values[block["topic_col"]])
+            mapped_main, mapped_topic = map_complaint_topic(sheet_main_topic, raw_topic_name)
+            if not mapped_topic:
+                continue
+            class_name = find_nearby_class(raw_sheet, row_idx, col_idx)
+            header_rows.append((row_idx, block, mapped_main, mapped_topic, class_name))
+
+    seen_headers = set()
+    unique_headers: List[Tuple[int, Dict[str, int], str, str, str]] = []
+    for header_idx, block, mapped_main, mapped_topic, class_name in header_rows:
+        header_key = (header_idx, block["flight_col"], block["topic_col"], mapped_main, mapped_topic, class_name)
+        if header_key not in seen_headers:
+            seen_headers.add(header_key)
+            unique_headers.append((header_idx, block, mapped_main, mapped_topic, class_name))
+
+    for header_idx, block, mapped_main, mapped_topic, class_name in unique_headers:
+        for data_idx in range(header_idx + 1, len(raw_sheet)):
+            row_values = raw_sheet.iloc[data_idx].tolist()
+            if block["flight_col"] < len(row_values) and is_flight_header(row_values[block["flight_col"]]):
+                break
+            flight_value = row_values[block["flight_col"]] if block["flight_col"] < len(row_values) else None
+            if not looks_like_flight(flight_value):
+                continue
+            date_value = row_values[block["date_col"]] if block["date_col"] < len(row_values) else None
+            date_parsed = parse_excel_date(date_value)
+            if pd.isna(date_parsed):
+                continue
+            ac_value = row_values[block["ac_col"]] if block["ac_col"] < len(row_values) else ""
+            from_value = row_values[block["from_col"]] if block["from_col"] < len(row_values) else ""
+            topic_value = row_values[block["topic_col"]] if block["topic_col"] < len(row_values) else ""
+            comment_text = clean_text(topic_value)
+            if len(comment_text) < 1 or is_metadata_header(comment_text) or is_numeric_like(comment_text):
+                continue
+            from_text = clean_text(from_value)
+            if not from_text or is_numeric_like(from_text):
+                continue
+            month_value = pd.to_datetime(date_parsed).strftime("%Y-%m") if pd.notna(date_parsed) else default_month
+            records.append({
+                "Main Topic": mapped_main,
+                "Topic": mapped_topic,
+                "FLIGHT": clean_flight_no(flight_value),
+                "Class": class_name,
+                "DATE": date_parsed.to_pydatetime() if pd.notna(date_parsed) else None,
+                "A/C TYPE": clean_text(ac_value),
+                "FROM": from_text,
+                "comment (text)": comment_text,
+                "Month": month_value,
+                "Source File": source_file.name,
+                "Source Sheet": sheet_name,
+            })
+
+    if not records:
+        return _empty_complaint_detail_df()
+    out = pd.DataFrame(records)
+    out = out.drop_duplicates(["Main Topic", "Topic", "FLIGHT", "Class", "DATE", "comment (text)"], keep="first")
+    return out.reset_index(drop=True)
+
+
+def standardize_commendation_sheet(df: Optional[pd.DataFrame]) -> Optional[pd.DataFrame]:
+    """Normalize Commendation sheet columns and class labels when available."""
+    if df is None or df.empty:
+        return df
+    work = df.copy()
+    work.columns = [clean_text(c) for c in work.columns]
+    rename_map = {}
+    for col in work.columns:
+        key = complaint_norm(col)
+        if key in {"tcsstopic", "maintopic", "touchpoint"}:
+            rename_map[col] = "TCSS Topic"
+        elif key in {"flight", "fltno", "flightno", "fltnumber"}:
+            rename_map[col] = "Flt.No."
+        elif key in {"date", "flightdate"}:
+            rename_map[col] = "Date"
+        elif key in {"class", "cabin", "segment"}:
+            rename_map[col] = "Class"
+        elif key in {"from", "station", "origin", "arrivedto", "destination"}:
+            rename_map[col] = "From"
+        elif key in {"commendation", "comment", "comments", "text", "commenttext"}:
+            rename_map[col] = "Commendation"
+    work = work.rename(columns=rename_map)
+    if "Class" in work.columns:
+        work["Class"] = work["Class"].apply(normalize_complaint_class).replace("", pd.NA).fillna(work["Class"].astype(str))
+    if "Date" in work.columns:
+        work["Date"] = pd.to_datetime(work["Date"], errors="coerce")
+    return work
+
+
+def validate_complaint_detail(detail_df: pd.DataFrame) -> pd.DataFrame:
+    checks = []
+    total_rows = len(detail_df)
+    checks.append({"Check": "Total extracted rows", "Result": total_rows, "Status": "OK" if total_rows > 0 else "Warning"})
+    required = COMPLAINT_OUTPUT_COLUMNS + ["Month", "Source File", "Source Sheet"]
+    for col in required:
+        missing = int(detail_df[col].isna().sum()) if col in detail_df.columns else total_rows
+        blank = int((detail_df[col].astype(str).str.strip() == "").sum()) if col in detail_df.columns else total_rows
+        status = "OK" if missing + blank == 0 else ("Review" if col in {"Class", "comment (text)"} else "Warning")
+        checks.append({"Check": f"Missing / blank {col}", "Result": missing + blank, "Status": status})
+    if not detail_df.empty and set(["Main Topic", "Topic", "FLIGHT", "DATE", "comment (text)"]).issubset(detail_df.columns):
+        duplicate_count = int(detail_df.duplicated(["Main Topic", "Topic", "FLIGHT", "Class", "DATE", "comment (text)"]).sum())
+    else:
+        duplicate_count = 0
+    checks.append({"Check": "Duplicate complaint records", "Result": duplicate_count, "Status": "OK" if duplicate_count == 0 else "Review"})
+    if not detail_df.empty and "Main Topic" in detail_df.columns:
+        unknown_topics = sorted(set(detail_df["Main Topic"].astype(str)) - set(COMPLAINT_MAIN_TOPIC_ORDER))
+        checks.append({"Check": "Unmapped main topics", "Result": ", ".join(unknown_topics) if unknown_topics else "None", "Status": "Review" if unknown_topics else "OK"})
+    checks.append({"Check": "Parser Version", "Result": COMPLAINT_PARSER_VERSION, "Status": "OK"})
+    return pd.DataFrame(checks)
+
+
+def build_summary_complaint_from_raw_folder(raw_folder: str, output_file: str = COMPLAINT_DETAIL_OUTPUT_DEFAULT) -> Tuple[pd.DataFrame, pd.DataFrame, Path]:
+    raw_path = Path(raw_folder).expanduser()
+    if not raw_path.is_absolute():
+        app_dir = Path(__file__).resolve().parent
+        app_candidate = app_dir / raw_path
+        cwd_candidate = Path.cwd() / raw_path
+        raw_path = app_candidate if app_candidate.exists() else cwd_candidate
+    if not raw_path.exists() or not raw_path.is_dir():
+        raise FileNotFoundError(f"Raw complaint folder not found: {raw_path}")
+
+    files = sorted(list(raw_path.glob("*.xlsx")) + list(raw_path.glob("*.xlsm")) + list(raw_path.glob("*.xls")))
+    files = [f for f in files if not f.name.startswith("~$") and "summary complaint detail" not in f.name.lower()]
+    if not files:
+        raise FileNotFoundError(f"No Excel complaint files found in: {raw_path}")
+
+    frames = []
+    errors = []
+    for file_path in files:
+        try:
+            part = extract_complaint_workbook(file_path)
+            if not part.empty:
+                frames.append(part)
+        except Exception as exc:
+            errors.append({"File": file_path.name, "Error": str(exc)})
+
+    detail = pd.concat(frames, ignore_index=True) if frames else _empty_complaint_detail_df()
+    if not detail.empty:
+        for col in COMPLAINT_OUTPUT_COLUMNS + ["Month", "Source File", "Source Sheet"]:
+            if col not in detail.columns:
+                detail[col] = ""
+        detail["DATE"] = pd.to_datetime(detail["DATE"], errors="coerce")
+        fallback_month = detail["Month"].astype(str).str.slice(0, 7)
+        detail["Month"] = detail["DATE"].dt.strftime("%Y-%m").fillna(fallback_month)
+        detail["FLIGHT"] = detail["FLIGHT"].apply(clean_flight_no)
+        detail["Class"] = detail["Class"].apply(normalize_complaint_class)
+        detail["FROM"] = detail["FROM"].apply(clean_text)
+        detail["comment (text)"] = detail["comment (text)"].apply(clean_text)
+        detail = detail[(detail["FLIGHT"] != "") & (detail["FROM"] != "") & (detail["DATE"].notna())].copy()
+        detail = detail.drop_duplicates(["Main Topic", "Topic", "FLIGHT", "Class", "DATE", "comment (text)"], keep="first")
+        detail["Main Topic"] = pd.Categorical(detail["Main Topic"], categories=COMPLAINT_MAIN_TOPIC_ORDER, ordered=True)
+        detail = detail.sort_values(["Month", "Main Topic", "Topic", "FLIGHT"], na_position="last")
+        detail["Main Topic"] = detail["Main Topic"].astype(str)
+
+    validation_df = validate_complaint_detail(detail)
+    if errors:
+        validation_df = pd.concat(
+            [validation_df, pd.DataFrame([{"Check": f"File error: {x['File']}", "Result": x["Error"], "Status": "Warning"} for x in errors])],
+            ignore_index=True,
+        )
+
+    summary_for_trend = pd.DataFrame(columns=["TCSS Topic", "Complaint Topic"])
+    if not detail.empty:
+        trend = detail.copy()
+        trend["Month Label"] = pd.to_datetime(trend["Month"] + "-01", errors="coerce").dt.strftime("%b %Y")
+        summary_for_trend = (
+            trend.groupby(["Main Topic", "Topic", "Month Label"], as_index=False)
+            .size()
+            .rename(columns={"size": "Count"})
+            .pivot_table(index=["Main Topic", "Topic"], columns="Month Label", values="Count", aggfunc="sum", fill_value=0)
+            .reset_index()
+            .rename(columns={"Main Topic": "TCSS Topic", "Topic": "Complaint Topic"})
+        )
+
+    output_path = Path(output_file).expanduser()
+    if not output_path.is_absolute():
+        output_path = Path(__file__).resolve().parent / output_path
+
+    existing_commendation = None
+    summary_complaint_path = get_data_file_path("Summary Complaint.xlsx")
+    for source_path in [summary_complaint_path, output_path]:
+        if source_path is None or not Path(source_path).exists():
+            continue
+        try:
+            existing_commendation = pd.read_excel(source_path, sheet_name="Commendation", engine="openpyxl")
+            existing_commendation = standardize_commendation_sheet(existing_commendation)
+            if existing_commendation is not None and not existing_commendation.empty:
+                break
+        except Exception:
+            continue
+
+    with pd.ExcelWriter(output_path, engine="openpyxl", mode="w") as writer:
+        summary_for_trend.to_excel(writer, index=False, sheet_name="Summary")
+        detail[COMPLAINT_OUTPUT_COLUMNS + ["Month", "Source File", "Source Sheet"]].to_excel(writer, index=False, sheet_name="Complaint Detail")
+        validation_df.to_excel(writer, index=False, sheet_name="Data Quality")
+        if existing_commendation is not None and not existing_commendation.empty:
+            existing_commendation.to_excel(writer, index=False, sheet_name="Commendation")
+    return detail, validation_df, output_path
+
+
 def infer_commendation_theme(text: str) -> str:
     """Classify free-text commendations into executive-readable topics.
 
@@ -4390,8 +4787,9 @@ def infer_commendation_theme(text: str) -> str:
 
 @st.cache_data
 def load_commendation_data() -> pd.DataFrame:
-    """Load and enrich Summary Complaint.xlsx / Commendation sheet."""
+    """Load and enrich Commendation sheet from Summary Complaint Detail or legacy Summary Complaint."""
     possible_names = [
+        "Summary Complaint Detail.xlsx",
         "Summary Complaint.xlsx",
         "Summary_Complaint.xlsx",
         "summary_complaint.xlsx",
@@ -4470,7 +4868,7 @@ def load_commendation_data() -> pd.DataFrame:
     work["MonthName"] = work["MonthNum"].map(MONTH_NAME)
     work["Commendation Topic"] = work["Commendation"].apply(infer_commendation_theme)
 
-    work["Class"] = raw.loc[work.index, class_col].apply(clean_text) if class_col is not None else ""
+    work["Class"] = raw.loc[work.index, class_col].apply(lambda x: normalize_complaint_class(x) or clean_text(x)) if class_col is not None else ""
     work["Flight No"] = raw.loc[work.index, flight_col].apply(clean_text) if flight_col is not None else ""
     work["From"] = raw.loc[work.index, from_col].apply(clean_text) if from_col is not None else ""
 
@@ -4986,6 +5384,301 @@ def extract_top_complaints(raw_df: pd.DataFrame, selected_months: List[str], sel
     return result
 
 
+
+# -----------------------------
+# PREMIUM V28: YEAR-SPLIT COMPLAINT DETAIL + LARGE TABLE SAFETY
+# -----------------------------
+COMPLAINT_PARSER_VERSION = "2026-05-v28-year-split-large-table-safe"
+COMPLAINT_DETAIL_OUTPUT_BY_YEAR = {2025: "Summary Complaint Detail 2025.xlsx", 2026: "Summary Complaint Detail 2026.xlsx"}
+COMPLAINT_DETAIL_MAX_DETAIL_ROWS = 1000
+COMPLAINT_DETAIL_NEGATIVE_THRESHOLD_ROWS = 1500
+VERY_NEGATIVE_PATTERNS = [
+    "very bad", "terrible", "horrible", "worst", "awful", "rude", "impolite", "careless", "angry", "upset",
+    "unacceptable", "disappointed", "disappointing", "never again", "poor", "no help", "no information", "lost",
+    "damage", "damaged", "delay", "late", "missed", "dirty", "broken", "not working", "ignored", "queue",
+    "long wait", "waiting", "chaos", "confusing", "unorganized", "แย่มาก", "แย่", "หยาบ", "ไม่สุภาพ",
+    "เสียหาย", "หาย", "ล่าช้า", "ดีเลย์", "ไม่ช่วย", "ไม่มีพนักงาน", "รอนาน", "สกปรก", "ผิดหวัง",
+    "ไม่พอใจ", "ไม่โอเค", "ไม่แจ้ง", "ไม่ดูแล", "วุ่นวาย", "ไม่เป็นระบบ", "ตกเครื่อง", "พลาดต่อเครื่อง",
+]
+
+
+def complaint_detail_output_path_for_year(year: int) -> Path:
+    return Path(__file__).resolve().parent / COMPLAINT_DETAIL_OUTPUT_BY_YEAR[int(year)]
+
+
+def infer_years_from_selected_months(months: Optional[List[str]]) -> List[int]:
+    years: List[int] = []
+    if months:
+        for month in months:
+            try:
+                y = int(str(month)[:4])
+                if y not in years:
+                    years.append(y)
+            except Exception:
+                continue
+    if not years:
+        years = [2025, 2026]
+    return sorted([y for y in years if y in COMPLAINT_DETAIL_OUTPUT_BY_YEAR]) or [2025, 2026]
+
+
+def _detail_year_from_row(row: pd.Series) -> Optional[int]:
+    for value in [row.get("Month", ""), row.get("Source File", "")]:
+        match = re.search(r"(20\d{2})", clean_text(value))
+        if match:
+            return int(match.group(1))
+    date_value = pd.to_datetime(row.get("DATE", pd.NaT), errors="coerce")
+    if pd.notna(date_value):
+        return int(date_value.year)
+    return None
+
+
+def _build_summary_for_trend_v28(detail: pd.DataFrame) -> pd.DataFrame:
+    if detail is None or detail.empty:
+        return pd.DataFrame(columns=["TCSS Topic", "Complaint Topic"])
+    trend = detail.copy()
+    trend["Month Label"] = pd.to_datetime(trend["Month"].astype(str) + "-01", errors="coerce").dt.strftime("%b %Y")
+    return (
+        trend.groupby(["Main Topic", "Topic", "Month Label"], as_index=False)
+        .size()
+        .rename(columns={"size": "Count"})
+        .pivot_table(index=["Main Topic", "Topic"], columns="Month Label", values="Count", aggfunc="sum", fill_value=0)
+        .reset_index()
+        .rename(columns={"Main Topic": "TCSS Topic", "Topic": "Complaint Topic"})
+    )
+
+
+def _write_complaint_year_workbook_v28(detail_year: pd.DataFrame, output_path: Path, existing_commendation: Optional[pd.DataFrame] = None) -> pd.DataFrame:
+    validation_df = validate_complaint_detail(detail_year)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    with pd.ExcelWriter(output_path, engine="openpyxl", mode="w") as writer:
+        _build_summary_for_trend_v28(detail_year).to_excel(writer, index=False, sheet_name="Summary")
+        detail_year[COMPLAINT_OUTPUT_COLUMNS + ["Month", "Source File", "Source Sheet"]].to_excel(writer, index=False, sheet_name="Complaint Detail")
+        validation_df.to_excel(writer, index=False, sheet_name="Data Quality")
+        if existing_commendation is not None and not existing_commendation.empty:
+            comm = existing_commendation.copy()
+            year_match = re.search(r"(20\d{2})", output_path.stem)
+            if year_match and "Date" in comm.columns:
+                comm_date = pd.to_datetime(comm["Date"], errors="coerce")
+                comm = comm[comm_date.dt.year.eq(int(year_match.group(1)))].copy()
+            if not comm.empty:
+                comm.to_excel(writer, index=False, sheet_name="Commendation")
+    return validation_df
+
+
+def build_summary_complaint_from_raw_folder(raw_folder: str, output_file: str = COMPLAINT_DETAIL_OUTPUT_DEFAULT) -> Tuple[pd.DataFrame, pd.DataFrame, Path]:
+    raw_path = Path(raw_folder).expanduser()
+    if not raw_path.is_absolute():
+        app_dir = Path(__file__).resolve().parent
+        raw_path = app_dir / raw_path if (app_dir / raw_path).exists() else Path.cwd() / raw_path
+    if not raw_path.exists() or not raw_path.is_dir():
+        raise FileNotFoundError(f"Raw complaint folder not found: {raw_path}")
+    files = sorted(list(raw_path.glob("*.xlsx")) + list(raw_path.glob("*.xlsm")) + list(raw_path.glob("*.xls")))
+    files = [f for f in files if not f.name.startswith("~$") and "summary complaint detail" not in f.name.lower()]
+    if not files:
+        raise FileNotFoundError(f"No Excel complaint files found in: {raw_path}")
+    frames, errors = [], []
+    for file_path in files:
+        try:
+            part = extract_complaint_workbook(file_path)
+            if part is not None and not part.empty:
+                frames.append(part)
+        except Exception as exc:
+            errors.append({"File": file_path.name, "Error": str(exc)})
+    detail = pd.concat(frames, ignore_index=True) if frames else _empty_complaint_detail_df()
+    if not detail.empty:
+        for col in COMPLAINT_OUTPUT_COLUMNS + ["Month", "Source File", "Source Sheet"]:
+            if col not in detail.columns:
+                detail[col] = ""
+        detail["DATE"] = pd.to_datetime(detail["DATE"], errors="coerce")
+        fallback_month = detail["Month"].astype(str).str.slice(0, 7)
+        source_parts = detail["Source File"].astype(str).str.extract(r"(20\d{2})[\-_ ]?(0[1-9]|1[0-2])", expand=True)
+        source_month = source_parts.apply(lambda r: f"{r.iloc[0]}-{r.iloc[1]}" if pd.notna(r.iloc[0]) and pd.notna(r.iloc[1]) else "", axis=1)
+        detail["Month"] = detail["DATE"].dt.strftime("%Y-%m").fillna(fallback_month)
+        detail.loc[~detail["Month"].astype(str).str.match(r"^20\d{2}-\d{2}$", na=False), "Month"] = source_month
+        detail["FLIGHT"] = detail["FLIGHT"].apply(clean_flight_no)
+        detail["Class"] = detail["Class"].apply(normalize_complaint_class)
+        detail["FROM"] = detail["FROM"].apply(clean_text)
+        detail["comment (text)"] = detail["comment (text)"].apply(clean_text)
+        detail = detail[(detail["FLIGHT"] != "") & (detail["FROM"] != "") & (detail["Month"].astype(str).str.match(r"^20\d{2}-\d{2}$", na=False))].copy()
+        detail = detail.drop_duplicates(["Main Topic", "Topic", "FLIGHT", "Class", "DATE", "comment (text)"], keep="first")
+        detail["Main Topic"] = pd.Categorical(detail["Main Topic"], categories=COMPLAINT_MAIN_TOPIC_ORDER, ordered=True)
+        detail = detail.sort_values(["Month", "Main Topic", "Topic", "FLIGHT"], na_position="last")
+        detail["Main Topic"] = detail["Main Topic"].astype(str)
+        detail["_Year"] = detail.apply(_detail_year_from_row, axis=1)
+    existing_commendation = None
+    scp = get_data_file_path("Summary Complaint.xlsx")
+    if scp is not None and Path(scp).exists():
+        try:
+            existing_commendation = standardize_commendation_sheet(pd.read_excel(scp, sheet_name="Commendation", engine="openpyxl"))
+        except Exception:
+            existing_commendation = None
+    validations, first_output = [], None
+    for year in COMPLAINT_DETAIL_OUTPUT_BY_YEAR:
+        out = complaint_detail_output_path_for_year(year)
+        year_df = _empty_complaint_detail_df() if detail.empty else detail[detail["_Year"].eq(year)].drop(columns=["_Year"], errors="ignore").copy()
+        val = _write_complaint_year_workbook_v28(year_df, out, existing_commendation)
+        val.insert(0, "Year", year)
+        validations.append(val)
+        first_output = first_output or out
+    combined_validation = pd.concat(validations, ignore_index=True) if validations else validate_complaint_detail(detail)
+    if errors:
+        combined_validation = pd.concat([combined_validation, pd.DataFrame([{"Year": "All", "Check": f"File error: {x['File']}", "Result": x["Error"], "Status": "Warning"} for x in errors])], ignore_index=True)
+    try:
+        old_path = Path(__file__).resolve().parent / COMPLAINT_DETAIL_OUTPUT_DEFAULT
+        if old_path.exists():
+            old_path.unlink()
+    except Exception:
+        pass
+    return detail.drop(columns=["_Year"], errors="ignore"), combined_validation, first_output or complaint_detail_output_path_for_year(2025)
+
+
+def _complaint_year_file_is_current(path: Path) -> bool:
+    return bool(path.exists() and complaint_detail_has_current_parser_version(path) and not complaint_detail_looks_corrupt(path))
+
+
+def ensure_summary_complaint_detail_file(raw_folder: str = COMPLAINT_RAW_FOLDER_DEFAULT, output_file: str = COMPLAINT_DETAIL_OUTPUT_DEFAULT) -> Tuple[Optional[Path], Optional[str]]:
+    raw_path = resolve_complaint_raw_folder(raw_folder)
+    output_paths = [complaint_detail_output_path_for_year(y) for y in COMPLAINT_DETAIL_OUTPUT_BY_YEAR]
+    if raw_path is None:
+        return next((p for p in output_paths if p.exists()), None), None
+    raw_files = sorted([p for p in list(raw_path.glob("*.xlsx")) + list(raw_path.glob("*.xlsm")) + list(raw_path.glob("*.xls")) if not p.name.startswith("~$")])
+    if not raw_files:
+        return next((p for p in output_paths if p.exists()), None), f"Complaint_Raw folder found but no Excel files are available: {raw_path}"
+    try:
+        newest_raw = newest_mtime(raw_files)
+        outputs_current = all(p.exists() and p.stat().st_mtime >= newest_raw and _complaint_year_file_is_current(p) for p in output_paths)
+        if not outputs_current:
+            detail, validation, built_path = build_summary_complaint_from_raw_folder(str(raw_path))
+            return built_path, f"Created Summary Complaint Detail 2025.xlsx and Summary Complaint Detail 2026.xlsx from {len(raw_files):,} raw complaint files with {len(detail):,} rows."
+        return next((p for p in output_paths if p.exists()), None), None
+    except Exception as exc:
+        return next((p for p in output_paths if p.exists()), None), f"Cannot auto-build yearly Summary Complaint Detail files: {exc}"
+
+
+def get_complaint_detail_signature(selected_month_values: Optional[List[str]] = None) -> Tuple[Tuple[object, ...], Optional[str]]:
+    _, status = ensure_summary_complaint_detail_file()
+    raw_path = resolve_complaint_raw_folder()
+    raw_files = [] if raw_path is None else sorted([p for p in list(raw_path.glob("*.xlsx")) + list(raw_path.glob("*.xlsm")) + list(raw_path.glob("*.xls")) if not p.name.startswith("~$")])
+    years = tuple(infer_years_from_selected_months(selected_month_values))
+    output_signature = tuple((year, str(complaint_detail_output_path_for_year(year)), round(complaint_detail_output_path_for_year(year).stat().st_mtime, 3) if complaint_detail_output_path_for_year(year).exists() else 0, complaint_detail_output_path_for_year(year).stat().st_size if complaint_detail_output_path_for_year(year).exists() else 0) for year in years)
+    raw_signature = tuple((p.name, round(p.stat().st_mtime, 3), p.stat().st_size) for p in raw_files if p.exists())
+    return (output_signature, raw_signature, years, COMPLAINT_PARSER_VERSION), status
+
+
+@st.cache_data(show_spinner=False)
+def load_complaint_detail_data(signature: Optional[Tuple[object, ...]] = None) -> pd.DataFrame:
+    ensure_summary_complaint_detail_file()
+    years = [2025, 2026]
+    try:
+        if signature is not None and len(signature) >= 3 and signature[2]:
+            years = [int(y) for y in signature[2]]
+    except Exception:
+        years = [2025, 2026]
+    frames: List[pd.DataFrame] = []
+    for year in years:
+        path = complaint_detail_output_path_for_year(year)
+        if not path.exists():
+            continue
+        for sheet_name in COMPLAINT_DETAIL_SHEET_NAMES:
+            try:
+                raw = pd.read_excel(path, sheet_name=sheet_name, engine="openpyxl")
+                if not raw.empty:
+                    frames.append(raw)
+                    break
+            except Exception:
+                continue
+    if not frames:
+        return pd.DataFrame(columns=COMPLAINT_OUTPUT_COLUMNS + ["Month", "Topic Canonical", "Source File", "Source Sheet"])
+    raw = pd.concat(frames, ignore_index=True)
+    raw.columns = [clean_text(c) for c in raw.columns]
+    mapping_candidates = {
+        "Main Topic": ["Main Topic", "Touchpoint", "TCSS Topic", "Topic Group", "Service Touchpoint"],
+        "Topic": ["Topic", "Complaint Topic", "Sub Topic", "Category", "Issue Topic"],
+        "FLIGHT": ["FLIGHT", "Flight", "Flt.No.", "Flt No", "Flight No", "Flight Number"],
+        "Class": ["Class", "Cabin", "Cabin Class", "Travel Class", "Segment"],
+        "DATE": ["DATE", "Date", "Flight Date"],
+        "A/C TYPE": ["A/C TYPE", "A/C", "AC", "Aircraft", "Aircraft Type", "A/C Type"],
+        "FROM": ["FROM", "From", "Form", "Arrived to", "Station", "Origin", "Destination"],
+        "comment (text)": ["comment (text)", "Comment", "Comments", "Complaint", "Complaint Text", "Text", "Verbatim"],
+        "Month": ["Month", "Period", "YYYY-MM"],
+        "Source File": ["Source File", "File", "Workbook"],
+        "Source Sheet": ["Source Sheet", "Sheet", "Worksheet"],
+    }
+    norm_to_col = {complaint_norm(col): col for col in raw.columns}
+    rename = {}
+    for target, cands in mapping_candidates.items():
+        src_col = None
+        for cand in cands:
+            if complaint_norm(cand) in norm_to_col:
+                src_col = norm_to_col[complaint_norm(cand)]
+                break
+        if src_col is None:
+            for col in raw.columns:
+                if any(complaint_norm(cand) in complaint_norm(col) for cand in cands):
+                    src_col = col
+                    break
+        if src_col is not None:
+            rename[src_col] = target
+    raw = raw.rename(columns=rename)
+    for col in COMPLAINT_OUTPUT_COLUMNS + ["Month", "Source File", "Source Sheet"]:
+        if col not in raw.columns:
+            raw[col] = ""
+    work = raw[COMPLAINT_OUTPUT_COLUMNS + ["Month", "Source File", "Source Sheet"]].copy()
+    work["FLIGHT"] = work["FLIGHT"].apply(clean_flight_no)
+    work["Class"] = work["Class"].apply(normalize_complaint_class)
+    work["DATE"] = pd.to_datetime(work["DATE"], errors="coerce")
+    fallback_month = work["Month"].astype(str).str.slice(0, 7)
+    source_parts = work["Source File"].astype(str).str.extract(r"(20\d{2})[\-_ ]?(0[1-9]|1[0-2])", expand=True)
+    source_month = source_parts.apply(lambda r: f"{r.iloc[0]}-{r.iloc[1]}" if pd.notna(r.iloc[0]) and pd.notna(r.iloc[1]) else "", axis=1)
+    work["Month"] = work["DATE"].dt.strftime("%Y-%m").fillna(fallback_month)
+    work.loc[~work["Month"].astype(str).str.match(r"^20\d{2}-\d{2}$", na=False), "Month"] = source_month
+    work["Main Topic"] = work["Main Topic"].apply(clean_text)
+    work["Topic"] = work["Topic"].apply(clean_text)
+    work["FROM"] = work["FROM"].apply(clean_text)
+    work["comment (text)"] = work["comment (text)"].apply(clean_text)
+    work["Topic Canonical"] = work["Main Topic"].apply(canonical_topic)
+    lavatory_mask = work["Topic"].str.contains("lavatory|toilet|amenity", case=False, na=False)
+    work.loc[lavatory_mask, "Topic Canonical"] = "Lavatory Cleanliness"
+    work = work[(work["FLIGHT"] != "") & (work["Month"].astype(str).str.match(r"^20\d{2}-\d{2}$", na=False))].copy()
+    work = work.drop_duplicates(["Main Topic", "Topic", "FLIGHT", "Class", "DATE", "comment (text)"], keep="first")
+    return work.reset_index(drop=True)
+
+
+def is_very_negative_text(text: object) -> bool:
+    value = clean_text(text).lower()
+    return bool(value and any(pattern.lower() in value for pattern in VERY_NEGATIVE_PATTERNS))
+
+
+def prepare_large_complaint_detail_display(work: pd.DataFrame, detail_cols: List[str], max_rows: int = COMPLAINT_DETAIL_MAX_DETAIL_ROWS) -> Tuple[pd.DataFrame, Optional[str]]:
+    if work is None or work.empty:
+        return pd.DataFrame(columns=detail_cols), None
+    display = work.copy()
+    for col in detail_cols:
+        if col not in display.columns:
+            display[col] = ""
+    selected_year_count = 0
+    try:
+        selected_year_count = len({int(str(m)[:4]) for m in selected_months})
+    except Exception:
+        selected_year_count = 0
+    warning = None
+    if len(display) > COMPLAINT_DETAIL_NEGATIVE_THRESHOLD_ROWS or selected_year_count > 1:
+        neg_mask = display["comment (text)"].apply(is_very_negative_text) if "comment (text)" in display.columns else pd.Series(False, index=display.index)
+        negative_display = display[neg_mask].copy()
+        if not negative_display.empty:
+            warning = f"Large detail selection detected. Showing {min(len(negative_display), max_rows):,} very negative free-text records from {len(display):,} total records."
+            display = negative_display
+        else:
+            warning = f"Large detail selection detected. No very negative wording was detected, so showing the first {min(len(display), max_rows):,} records from {len(display):,} total records."
+    if len(display) > max_rows:
+        if warning is None:
+            warning = f"Showing the first {max_rows:,} records from {len(display):,} matching complaint records to keep the dashboard responsive."
+        display = display.head(max_rows).copy()
+    display = display[detail_cols].copy()
+    if "DATE" in display.columns:
+        display["DATE"] = pd.to_datetime(display["DATE"], errors="coerce").dt.strftime("%Y-%m-%d")
+    return display.reset_index(drop=True), warning
+
 # -----------------------------
 # LANDING PAGE
 # -----------------------------
@@ -5039,8 +5732,9 @@ raw_df = load_raw_text()
 extra_data = load_extra_data()
 coord_df = load_station_coordinates()
 complaint_summary_df = load_summary_complaint()
+# Build/reuse yearly complaint-detail workbooks up front, but defer loading detail rows until selected_months is known.
 complaint_detail_signature, complaint_detail_status = get_complaint_detail_signature()
-complaint_detail_df = load_complaint_detail_data(complaint_detail_signature)
+complaint_detail_df = pd.DataFrame(columns=COMPLAINT_OUTPUT_COLUMNS + ["Month", "Topic Canonical", "Source File", "Source Sheet"])
 commendation_detail_df = load_commendation_data()
 if complaint_detail_status:
     if complaint_detail_status.startswith("Created"):
@@ -5194,6 +5888,12 @@ if not selected_touchpoint_labels:
 else:
     selected_canonical = SIDEBAR_TO_CANONICAL.get(selected_touchpoint_labels[0], selected_touchpoint_labels[0])
     selected_topics = [selected_canonical]
+
+# Load only the yearly complaint-detail workbook(s) needed for the selected period.
+complaint_detail_signature, complaint_detail_status_selected = get_complaint_detail_signature(selected_months)
+complaint_detail_df = load_complaint_detail_data(complaint_detail_signature)
+if complaint_detail_status_selected and not complaint_detail_status_selected.startswith("Created"):
+    st.warning(complaint_detail_status_selected)
 
 
 def scroll_to_top_when_touchpoint_changes(touchpoint_name: str) -> None:
@@ -6001,8 +6701,47 @@ def _complaint_detail_with_canonical() -> pd.DataFrame:
     return df.reset_index(drop=True)
 
 
+def _selected_touchpoint_keys_for_heatmap(topics: List[str]) -> set:
+    """Return normalized canonical/source-sheet keys for selected touchpoints.
+
+    The complaint detail file can contain labels from multiple parser generations
+    (display labels, canonical labels, or raw sheet labels). Matching through this
+    compact key set prevents false empty heatmaps when labels differ slightly.
+    """
+    keys = set()
+    for topic in topics or []:
+        text_value = clean_text(topic)
+        if not text_value:
+            continue
+        if text_value.lower() in {"overall", "all touchpoints", "all"}:
+            keys.add("__ALL__")
+            continue
+        canonical = canonical_topic(text_value)
+        display = display_topic(canonical)
+        for value in {text_value, canonical, display}:
+            keys.add(normalize_key(value))
+            keys.add(complaint_norm(value))
+    return keys
+
+
+def _infer_month_from_source_file(value: object) -> str:
+    """Infer YYYY-MM from source filename when DATE/Month cells are incomplete."""
+    try:
+        parsed = parse_month_from_complaint_file(Path(clean_text(value)))
+        return parsed or ""
+    except Exception:
+        text_value = clean_text(value)
+        match = re.search(r"(20\d{2})[\-_ ]?(0[1-9]|1[0-2])", text_value)
+        return f"{match.group(1)}-{match.group(2)}" if match else ""
+
+
 def _filter_complaint_detail_for_heatmap(topics: List[str], required_location_col: str) -> pd.DataFrame:
-    """Filter complaint detail for heatmaps while keeping useful warning messages."""
+    """Filter complaint detail for station/flight heatmaps with robust fallbacks.
+
+    This function intentionally does not require `comment (text)` because heatmap
+    analytics only need Month + Topic + FROM/FLIGHT. It also supports older output
+    files where Month must be inferred from Source File.
+    """
     df = _complaint_detail_with_canonical()
     if df.empty:
         return pd.DataFrame()
@@ -6011,20 +6750,58 @@ def _filter_complaint_detail_for_heatmap(topics: List[str], required_location_co
         st.warning(f"Complaint detail data is available, but `{required_location_col}` is missing. Please check Summary Complaint Detail.xlsx.")
         return pd.DataFrame()
 
-    selected_topic_set = set(topics or [])
-    if selected_topic_set and "All Touchpoints" not in selected_topic_set:
-        df = df[df["Topic Canonical"].isin(selected_topic_set)].copy()
+    for col in ["Main Topic", "Topic", "Topic Canonical", "Source Sheet", "Source File", "Month", "FLIGHT", "FROM", "comment (text)"]:
+        if col not in df.columns:
+            df[col] = ""
+
+    # Rebuild canonical topic defensively from the strongest available label.
+    canonical_source = df["Topic Canonical"].astype(str)
+    blank_canonical = canonical_source.str.strip().eq("") | canonical_source.str.lower().eq("nan")
+    fallback_topic = df["Main Topic"].where(df["Main Topic"].astype(str).str.strip() != "", df["Source Sheet"])
+    df.loc[blank_canonical, "Topic Canonical"] = fallback_topic[blank_canonical].apply(canonical_topic)
+    df["Topic Canonical"] = df["Topic Canonical"].apply(canonical_topic)
+
+    # Build robust Month. Some Excel outputs preserve Month even when DATE cannot be parsed.
+    month_from_date = pd.to_datetime(df.get("DATE", pd.Series([pd.NaT] * len(df))), errors="coerce").dt.strftime("%Y-%m")
+    month_existing = df["Month"].astype(str).str.extract(r"((?:19|20)\d{2}[-/]?(?:0[1-9]|1[0-2]))", expand=False).fillna("")
+    month_existing = month_existing.str.replace("/", "-", regex=False)
+    month_from_file = df["Source File"].apply(_infer_month_from_source_file)
+    df["Month"] = month_from_date.fillna("")
+    df.loc[df["Month"].astype(str).str.strip().eq(""), "Month"] = month_existing
+    df.loc[df["Month"].astype(str).str.strip().eq(""), "Month"] = month_from_file
+    df["Month"] = df["Month"].astype(str).str.slice(0, 7)
+
+    selected_topic_keys = _selected_touchpoint_keys_for_heatmap(topics)
+    if selected_topic_keys and "__ALL__" not in selected_topic_keys:
+        match_mask = pd.Series(False, index=df.index)
+        for col in ["Topic Canonical", "Main Topic", "Source Sheet"]:
+            if col in df.columns:
+                match_mask = match_mask | df[col].astype(str).apply(
+                    lambda value: normalize_key(canonical_topic(value)) in selected_topic_keys
+                    or complaint_norm(canonical_topic(value)) in selected_topic_keys
+                    or normalize_key(value) in selected_topic_keys
+                    or complaint_norm(value) in selected_topic_keys
+                )
+        df = df[match_mask].copy()
 
     if selected_months and "Month" in df.columns:
-        df = df[df["Month"].astype(str).isin([str(m) for m in selected_months])].copy()
+        selected_month_set = {str(m)[:7] for m in selected_months if str(m).strip()}
+        if selected_month_set:
+            df = df[df["Month"].astype(str).str.slice(0, 7).isin(selected_month_set)].copy()
 
-    if "Topic" in df.columns:
-        df = df[~df["Topic"].astype(str).str.contains("commendation", case=False, na=False)].copy()
+    # Exclude positive feedback from complaint heatmaps.
+    commendation_mask = pd.Series(False, index=df.index)
+    for col in ["Topic", "Main Topic"]:
+        if col in df.columns:
+            commendation_mask = commendation_mask | df[col].astype(str).str.contains("commendation", case=False, na=False)
+    df = df[~commendation_mask].copy()
 
     df[required_location_col] = df[required_location_col].apply(clean_text)
     df = df[df[required_location_col] != ""].copy()
-    return df
-
+    if required_location_col == "FLIGHT":
+        df["FLIGHT"] = df["FLIGHT"].apply(clean_flight_no)
+        df = df[df["FLIGHT"] != ""].copy()
+    return df.reset_index(drop=True)
 
 def render_complaint_station_heatmap(topics: List[str], title: str = "Complaint by Station"):
     """Render station-level complaint intensity using FROM from Summary Complaint Detail.xlsx."""
@@ -6144,9 +6921,8 @@ def render_complaint_station_heatmap(topics: List[str], title: str = "Complaint 
 
     station_panel_height = 470 if not IS_MOBILE_MODE else 380
     if not IS_MOBILE_MODE and not station_counts.empty:
-        # V25 layout: executive 7:3 split. Map occupies the dominant analytical area on the left;
-        # station ranking table remains visible on the right without crowding the map.
-        map_col, station_col = st.columns([7, 3], gap="large")
+        # V26 layout: executive 6:4 split. Map stays wide on the left while the station table has enough room on the right.
+        map_col, station_col = st.columns([6, 4], gap="large")
         with map_col:
             st.markdown("<div class='station-map-panel'>", unsafe_allow_html=True)
             render_plotly_chart(fig, enable_scroll_zoom=True)
@@ -6178,13 +6954,11 @@ def render_complaint_station_heatmap(topics: List[str], title: str = "Complaint 
     else:
         render_plotly_chart(fig, enable_scroll_zoom=True)
 
-    with st.expander("View station complaint records behind the heatmap", expanded=False):
-        detail_cols = ["Main Topic", "Topic", "FLIGHT", "DATE", "A/C TYPE", "FROM", "comment (text)"]
-        for col in detail_cols:
-            if col not in work.columns:
-                work[col] = ""
-        display = work[detail_cols].copy()
-        display["DATE"] = pd.to_datetime(display["DATE"], errors="coerce").dt.strftime("%Y-%m-%d")
+    with st.expander("Complaint by station detail (Free text)", expanded=False):
+        detail_cols = ["Main Topic", "Topic", "FLIGHT", "Class", "DATE", "A/C TYPE", "FROM", "comment (text)"]
+        display, warning = prepare_large_complaint_detail_display(work, detail_cols, max_rows=COMPLAINT_DETAIL_MAX_DETAIL_ROWS)
+        if warning:
+            st.caption(warning)
         dataframe_white(display, height=300)
 
 
@@ -6244,13 +7018,11 @@ def render_complaint_flight_heatmap(topics: List[str], title: str = "Complaint b
     fig.update_yaxes(automargin=True)
     render_plotly_chart(fig)
 
-    with st.expander("View complaint records behind the flight heatmap", expanded=False):
-        detail_cols = ["Main Topic", "Topic", "FLIGHT", "DATE", "A/C TYPE", "FROM", "comment (text)"]
-        for col in detail_cols:
-            if col not in work.columns:
-                work[col] = ""
-        display = work[detail_cols].copy()
-        display["DATE"] = pd.to_datetime(display["DATE"], errors="coerce").dt.strftime("%Y-%m-%d")
+    with st.expander("Complaint by flight detail (Free text)", expanded=False):
+        detail_cols = ["Main Topic", "Topic", "FLIGHT", "Class", "DATE", "A/C TYPE", "FROM", "comment (text)"]
+        display, warning = prepare_large_complaint_detail_display(work, detail_cols, max_rows=COMPLAINT_DETAIL_MAX_DETAIL_ROWS)
+        if warning:
+            st.caption(warning)
         dataframe_white(display, height=300)
 
 
