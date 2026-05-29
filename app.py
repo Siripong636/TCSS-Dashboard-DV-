@@ -1179,6 +1179,30 @@ section[data-testid="stSidebar"][aria-expanded="false"] ~ div .stPlotlyChart {
     padding-right: 1.25rem !important;
 }
 
+/* V24: stronger full-width canvas when the sidebar is hidden.
+   Streamlit versions vary in their collapsed-sidebar DOM, so target both
+   collapsedControl and sidebar aria-expanded states. */
+[data-testid="stAppViewContainer"]:has([data-testid="collapsedControl"]) [data-testid="stMain"],
+[data-testid="stAppViewContainer"]:has(section[data-testid="stSidebar"][aria-expanded="false"]) [data-testid="stMain"] {
+    margin-left: 0 !important;
+    padding-left: 0 !important;
+    width: 100vw !important;
+    max-width: 100vw !important;
+}
+[data-testid="stAppViewContainer"]:has([data-testid="collapsedControl"]) [data-testid="stMainBlockContainer"],
+[data-testid="stAppViewContainer"]:has(section[data-testid="stSidebar"][aria-expanded="false"]) [data-testid="stMainBlockContainer"],
+[data-testid="stAppViewContainer"]:has([data-testid="collapsedControl"]) .main .block-container,
+[data-testid="stAppViewContainer"]:has(section[data-testid="stSidebar"][aria-expanded="false"]) .main .block-container {
+    max-width: none !important;
+    width: 100% !important;
+    padding-left: 0.75rem !important;
+    padding-right: 0.75rem !important;
+}
+[data-testid="stAppViewContainer"]:has([data-testid="collapsedControl"]) [data-testid="stVerticalBlock"],
+[data-testid="stAppViewContainer"]:has(section[data-testid="stSidebar"][aria-expanded="false"]) [data-testid="stVerticalBlock"] {
+    max-width: 100% !important;
+}
+
 @media (max-width: 900px) {
     .block-container {
         max-width: 100% !important;
@@ -1688,13 +1712,172 @@ section[data-testid="stSidebar"][aria-expanded="false"] ~ div .stPlotlyChart {
     display:none !important;
 }
 
+
+/* V22: full-width dashboard canvas and smaller premium sidebar brand card. */
+.block-container {
+    width: 100% !important;
+    max-width: 100% !important;
+}
+.stPlotlyChart,
+.stPlotlyChart > div {
+    width: 100% !important;
+    max-width: 100% !important;
+}
+[data-testid="stAppViewContainer"]:has(section[data-testid="stSidebar"][aria-expanded="false"]) [data-testid="stMain"],
+[data-testid="stAppViewContainer"]:has([data-testid="collapsedControl"]) [data-testid="stMain"],
+[data-testid="stAppViewContainer"]:has([data-testid="stSidebarCollapsedControl"]) [data-testid="stMain"],
+[data-testid="stAppViewContainer"]:has(button[title="Open sidebar"]) [data-testid="stMain"] {
+    width: 100vw !important;
+    max-width: 100vw !important;
+}
+[data-testid="stAppViewContainer"]:has(section[data-testid="stSidebar"][aria-expanded="false"]) .block-container,
+[data-testid="stAppViewContainer"]:has([data-testid="collapsedControl"]) .block-container,
+[data-testid="stAppViewContainer"]:has([data-testid="stSidebarCollapsedControl"]) .block-container,
+[data-testid="stAppViewContainer"]:has(button[title="Open sidebar"]) .block-container {
+    width: 100% !important;
+    max-width: 100% !important;
+    padding-left: clamp(0.72rem, 1.1vw, 1.25rem) !important;
+    padding-right: clamp(0.72rem, 1.1vw, 1.25rem) !important;
+}
+.sidebar-brand {
+    border-radius: 18px !important;
+    padding: 0.48rem 0.50rem 0.42rem 0.50rem !important;
+    margin: -0.04rem 0 0.44rem 0 !important;
+    box-shadow: 0 12px 28px rgba(0,0,0,0.22) !important;
+}
+.sidebar-logo {
+    font-size: 0.88rem !important;
+    line-height: 1.0 !important;
+}
+.sidebar-title {
+    font-size: 0.94rem !important;
+    line-height: 1.0 !important;
+    margin-top: 0.30rem !important;
+    letter-spacing: -0.025em !important;
+}
+.sidebar-66-logo-wrap {
+    margin-top: 0.22rem !important;
+    padding: 0 !important;
+}
+.sidebar-66-logo {
+    width: min(86px, 58%) !important;
+    max-height: 48px !important;
+    filter: drop-shadow(0 7px 12px rgba(0,0,0,0.24)) !important;
+}
+.sidebar-brand-line {
+    margin-top: 0.28rem !important;
+    gap: 0.14rem !important;
+}
+.sidebar-brand-line span {
+    height: 2px !important;
+}
+
+
+/* V23: Complaint by Station 3:1 map/table layout tuning. */
+[data-testid="column"] [data-testid="stDataFrame"] {
+    width: 100% !important;
+}
+[data-testid="column"] [data-testid="stDataFrame"] div {
+    font-size: 0.88rem !important;
+}
+[data-testid="column"] .stPlotlyChart {
+    overflow: hidden !important;
+}
+[data-testid="column"] .stPlotlyChart > div,
+[data-testid="column"] .js-plotly-plot,
+[data-testid="column"] .js-plotly-plot .plotly,
+[data-testid="column"] .js-plotly-plot .svg-container {
+    overflow: hidden !important;
+}
+
+
+
+/* V25: Complaint by Station 7:3 map/table layout + reliable collapsed-sidebar full-width canvas. */
+[data-testid="column"]:has(.station-ranking-panel) {
+    min-width: 280px !important;
+}
+.station-ranking-panel {
+    width: 100% !important;
+}
+.station-map-panel .stPlotlyChart,
+.station-map-panel .stPlotlyChart > div {
+    width: 100% !important;
+}
+
+/* When Streamlit sidebar is collapsed, do not reserve the old sidebar width.
+   Different Streamlit versions expose different controls, so these selectors cover
+   stSidebarCollapsedControl, button title, aria-label and aria-expanded variants. */
+[data-testid="stAppViewContainer"]:has([data-testid="stSidebarCollapsedControl"]) section[data-testid="stSidebar"],
+[data-testid="stAppViewContainer"]:has(button[title="Open sidebar"]) section[data-testid="stSidebar"],
+[data-testid="stAppViewContainer"]:has(button[title="Show sidebar"]) section[data-testid="stSidebar"],
+[data-testid="stAppViewContainer"]:has(button[aria-label="Open sidebar"]) section[data-testid="stSidebar"],
+[data-testid="stAppViewContainer"]:has(button[aria-label="Show sidebar"]) section[data-testid="stSidebar"],
+[data-testid="stAppViewContainer"]:has(section[data-testid="stSidebar"][aria-expanded="false"]) section[data-testid="stSidebar"] {
+    display: none !important;
+    visibility: hidden !important;
+    min-width: 0 !important;
+    width: 0 !important;
+    max-width: 0 !important;
+    flex: 0 0 0 !important;
+    flex-basis: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: 0 !important;
+    box-shadow: none !important;
+    overflow: hidden !important;
+    position: absolute !important;
+    left: -320px !important;
+}
+
+[data-testid="stAppViewContainer"]:has([data-testid="stSidebarCollapsedControl"]) [data-testid="stMain"],
+[data-testid="stAppViewContainer"]:has(button[title="Open sidebar"]) [data-testid="stMain"],
+[data-testid="stAppViewContainer"]:has(button[title="Show sidebar"]) [data-testid="stMain"],
+[data-testid="stAppViewContainer"]:has(button[aria-label="Open sidebar"]) [data-testid="stMain"],
+[data-testid="stAppViewContainer"]:has(button[aria-label="Show sidebar"]) [data-testid="stMain"],
+[data-testid="stAppViewContainer"]:has(section[data-testid="stSidebar"][aria-expanded="false"]) [data-testid="stMain"] {
+    margin-left: 0 !important;
+    padding-left: 0 !important;
+    width: 100vw !important;
+    max-width: 100vw !important;
+    flex: 1 1 100vw !important;
+}
+
+[data-testid="stAppViewContainer"]:has([data-testid="stSidebarCollapsedControl"]) [data-testid="stMainBlockContainer"],
+[data-testid="stAppViewContainer"]:has(button[title="Open sidebar"]) [data-testid="stMainBlockContainer"],
+[data-testid="stAppViewContainer"]:has(button[title="Show sidebar"]) [data-testid="stMainBlockContainer"],
+[data-testid="stAppViewContainer"]:has(button[aria-label="Open sidebar"]) [data-testid="stMainBlockContainer"],
+[data-testid="stAppViewContainer"]:has(button[aria-label="Show sidebar"]) [data-testid="stMainBlockContainer"],
+[data-testid="stAppViewContainer"]:has(section[data-testid="stSidebar"][aria-expanded="false"]) [data-testid="stMainBlockContainer"],
+[data-testid="stAppViewContainer"]:has([data-testid="stSidebarCollapsedControl"]) .block-container,
+[data-testid="stAppViewContainer"]:has(button[title="Open sidebar"]) .block-container,
+[data-testid="stAppViewContainer"]:has(button[title="Show sidebar"]) .block-container,
+[data-testid="stAppViewContainer"]:has(button[aria-label="Open sidebar"]) .block-container,
+[data-testid="stAppViewContainer"]:has(button[aria-label="Show sidebar"]) .block-container,
+[data-testid="stAppViewContainer"]:has(section[data-testid="stSidebar"][aria-expanded="false"]) .block-container {
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+    padding-left: clamp(0.35rem, 0.7vw, 0.9rem) !important;
+    padding-right: clamp(0.35rem, 0.7vw, 0.9rem) !important;
+    width: 100% !important;
+    max-width: 100vw !important;
+}
+
+[data-testid="stAppViewContainer"]:has([data-testid="stSidebarCollapsedControl"]) .stPlotlyChart,
+[data-testid="stAppViewContainer"]:has(button[title="Open sidebar"]) .stPlotlyChart,
+[data-testid="stAppViewContainer"]:has(button[title="Show sidebar"]) .stPlotlyChart,
+[data-testid="stAppViewContainer"]:has(button[aria-label="Open sidebar"]) .stPlotlyChart,
+[data-testid="stAppViewContainer"]:has(button[aria-label="Show sidebar"]) .stPlotlyChart {
+    width: 100% !important;
+    max-width: 100% !important;
+}
+
 </style>
 """
 
-container_max = "430px" if IS_MOBILE_MODE else "1240px"
-chart_max_width = "100%" if IS_MOBILE_MODE else "980px"
-collapsed_container_max = "100%" if IS_MOBILE_MODE else "100vw"
-collapsed_chart_max_width = "100%" if IS_MOBILE_MODE else "100%"
+container_max = "430px" if IS_MOBILE_MODE else "100%"
+chart_max_width = "100%"
+collapsed_container_max = "100%" if IS_MOBILE_MODE else "100%"
+collapsed_chart_max_width = "100%"
 sidebar_width = "238px"
 sidebar_display = "none" if IS_MOBILE_MODE else "block"
 
@@ -5740,21 +5923,114 @@ def resolve_station_coordinate(station_value: object) -> Tuple[str, Optional[flo
     return clean_text(row["Station"]), float(row["Latitude"]), float(row["Longitude"]), country
 
 
+
+def _complaint_detail_with_canonical() -> pd.DataFrame:
+    """Return complaint-detail records with defensive column and topic normalization.
+
+    Heatmaps should not fail silently when the detail file has slightly different
+    column names or when the comment text is missing. This function prepares the
+    minimum operational fields required for station/flight analysis.
+    """
+    if complaint_detail_df.empty:
+        return pd.DataFrame()
+    df = complaint_detail_df.copy()
+    df.columns = [clean_text(c) for c in df.columns]
+
+    alias_map = {
+        "Main Topic": ["Main Topic", "Touchpoint", "Service Touchpoint", "TCSS Topic", "Topic Group", "MainTopic"],
+        "Topic": ["Topic", "Complaint Topic", "Sub Topic", "Subtopic", "Category", "Issue Topic"],
+        "FLIGHT": ["FLIGHT", "Flight", "Flight No", "Flight Number", "Flt No", "Flt.No.", "FLT"],
+        "DATE": ["DATE", "Date", "Flight Date", "Travel Date"],
+        "A/C TYPE": ["A/C TYPE", "A/C Type", "Aircraft Type", "Aircraft", "AC TYPE"],
+        "FROM": ["FROM", "From", "Origin", "Station", "Airport", "Arrived to"],
+        "comment (text)": ["comment (text)", "Comment", "Comments", "Complaint", "Complaint Text", "Text", "Verbatim"],
+        "Month": ["Month", "YYYY-MM", "Period", "Year Month"],
+        "Topic Canonical": ["Topic Canonical", "Canonical Topic", "Canonical Touchpoint"],
+    }
+    norm_to_col = {normalize_key(c): c for c in df.columns}
+    rename_map = {}
+    for target, candidates in alias_map.items():
+        if target in df.columns:
+            continue
+        found = None
+        for candidate in candidates:
+            key = normalize_key(candidate)
+            if key in norm_to_col:
+                found = norm_to_col[key]
+                break
+        if found is None:
+            for col in df.columns:
+                col_key = normalize_key(col)
+                if any(normalize_key(candidate) in col_key or col_key in normalize_key(candidate) for candidate in candidates):
+                    found = col
+                    break
+        if found is not None:
+            rename_map[found] = target
+    if rename_map:
+        df = df.rename(columns=rename_map)
+
+    for col in ["Main Topic", "Topic", "FLIGHT", "DATE", "A/C TYPE", "FROM", "comment (text)", "Month", "Topic Canonical"]:
+        if col not in df.columns:
+            df[col] = ""
+
+    df["Main Topic"] = df["Main Topic"].apply(clean_text)
+    df["Topic"] = df["Topic"].apply(clean_text)
+    df["FLIGHT"] = df["FLIGHT"].apply(clean_flight_no)
+    df["FROM"] = df["FROM"].apply(clean_text)
+    df["comment (text)"] = df["comment (text)"].apply(clean_text)
+
+    if df["Topic Canonical"].astype(str).str.strip().eq("").all():
+        base_topic = df["Main Topic"].where(df["Main Topic"].astype(str).str.strip() != "", df["Topic"])
+        df["Topic Canonical"] = base_topic.apply(canonical_topic)
+    else:
+        df["Topic Canonical"] = df["Topic Canonical"].apply(canonical_topic)
+
+    # Harden lavatory records that may be stored under Cabin Cleanliness in raw files.
+    lavatory_mask = (
+        df["Main Topic"].str.contains("lavatory|toilet", case=False, na=False)
+        | df["Topic"].str.contains("lavatory|toilet|amenity", case=False, na=False)
+    )
+    df.loc[lavatory_mask, "Topic Canonical"] = "Lavatory Cleanliness"
+
+    if df["Month"].astype(str).str.match(r"^\d{4}-\d{2}$", na=False).any():
+        df["Month"] = df["Month"].astype(str).str.slice(0, 7)
+    else:
+        df["DATE"] = pd.to_datetime(df["DATE"], errors="coerce")
+        df["Month"] = df["DATE"].dt.strftime("%Y-%m")
+
+    return df.reset_index(drop=True)
+
+
+def _filter_complaint_detail_for_heatmap(topics: List[str], required_location_col: str) -> pd.DataFrame:
+    """Filter complaint detail for heatmaps while keeping useful warning messages."""
+    df = _complaint_detail_with_canonical()
+    if df.empty:
+        return pd.DataFrame()
+
+    if required_location_col not in df.columns:
+        st.warning(f"Complaint detail data is available, but `{required_location_col}` is missing. Please check Summary Complaint Detail.xlsx.")
+        return pd.DataFrame()
+
+    selected_topic_set = set(topics or [])
+    if selected_topic_set and "All Touchpoints" not in selected_topic_set:
+        df = df[df["Topic Canonical"].isin(selected_topic_set)].copy()
+
+    if selected_months and "Month" in df.columns:
+        df = df[df["Month"].astype(str).isin([str(m) for m in selected_months])].copy()
+
+    if "Topic" in df.columns:
+        df = df[~df["Topic"].astype(str).str.contains("commendation", case=False, na=False)].copy()
+
+    df[required_location_col] = df[required_location_col].apply(clean_text)
+    df = df[df[required_location_col] != ""].copy()
+    return df
+
+
 def render_complaint_station_heatmap(topics: List[str], title: str = "Complaint by Station"):
     """Render station-level complaint intensity using FROM from Summary Complaint Detail.xlsx."""
-    if complaint_detail_df.empty:
-        return
-    required_cols = {"Topic Canonical", "Month", "FROM", "Topic", "comment (text)"}
-    if not required_cols.issubset(set(complaint_detail_df.columns)):
-        st.warning("Complaint detail data is available, but required columns are missing for station heatmap.")
-        return
-
-    work = complaint_detail_df.copy()
-    work = work[(work["Topic Canonical"].isin(topics)) & (work["Month"].isin(selected_months))].copy()
-    if "Topic" in work.columns:
-        work = work[~work["Topic"].astype(str).str.contains("commendation", case=False, na=False)].copy()
-    work = work[(work["FROM"].astype(str).str.strip() != "") & (work["comment (text)"].astype(str).str.strip() != "")].copy()
+    work = _filter_complaint_detail_for_heatmap(topics, "FROM")
     if work.empty:
+        st.info("No station complaint data available for the selected filters.")
         return
 
     resolved = work["FROM"].apply(resolve_station_coordinate)
@@ -5774,7 +6050,7 @@ def render_complaint_station_heatmap(topics: List[str], title: str = "Complaint 
         .sort_values("Complaint Count", ascending=False)
     )
     max_count = max(1, int(station_counts["Complaint Count"].max()))
-    station_counts["Marker Size"] = station_counts["Complaint Count"].apply(lambda x: 7 + 18 * (float(x) / max_count) ** 0.55)
+    station_counts["Marker Size"] = station_counts["Complaint Count"].apply(lambda x: 8 + 22 * (float(x) / max_count) ** 0.55)
 
     country_counts = (
         station_counts.dropna(subset=["Country"])
@@ -5786,9 +6062,6 @@ def render_complaint_station_heatmap(topics: List[str], title: str = "Complaint 
     country_counts = country_counts.dropna(subset=["ISO3"])
 
     fig = go.Figure()
-
-    # Country-level choropleth creates a true world heatmap, while station markers
-    # keep the underlying FROM station detail available for operational drill-down.
     if not country_counts.empty:
         fig.add_trace(
             go.Choropleth(
@@ -5836,7 +6109,7 @@ def render_complaint_station_heatmap(topics: List[str], title: str = "Complaint 
                 cmin=0,
                 cmax=max(1, float(station_counts["Complaint Count"].max())),
                 line=dict(width=1.35, color="#FFFFFF"),
-                opacity=0.92,
+                opacity=0.94,
                 showscale=False,
             ),
             customdata=station_counts[["Country", "Complaint Count"]],
@@ -5863,48 +6136,65 @@ def render_complaint_station_heatmap(topics: List[str], title: str = "Complaint 
             lataxis_showgrid=False,
             lonaxis_showgrid=False,
             center=dict(lat=12, lon=78),
-            projection_scale=1.18,
+            projection_scale=1.20,
         ),
-        margin=dict(l=10, r=10, t=76, b=20),
+        margin=dict(l=8, r=8, t=70, b=18),
     )
-    apply_plot_layout(fig, height=430 if not IS_MOBILE_MODE else 360, title_size=18, show_grid=False)
+    apply_plot_layout(fig, height=470 if not IS_MOBILE_MODE else 380, title_size=18, show_grid=False)
 
+    station_panel_height = 470 if not IS_MOBILE_MODE else 380
     if not IS_MOBILE_MODE and not station_counts.empty:
-        map_col, station_col = st.columns([3.75, 1.0], gap="medium")
+        # V25 layout: executive 7:3 split. Map occupies the dominant analytical area on the left;
+        # station ranking table remains visible on the right without crowding the map.
+        map_col, station_col = st.columns([7, 3], gap="large")
         with map_col:
+            st.markdown("<div class='station-map-panel'>", unsafe_allow_html=True)
             render_plotly_chart(fig, enable_scroll_zoom=True)
+            st.markdown("</div>", unsafe_allow_html=True)
         with station_col:
+            st.markdown("<div class='station-ranking-panel'>", unsafe_allow_html=True)
             st.markdown("<div class='table-caption-note'>Number Complaints by Station</div>", unsafe_allow_html=True)
-            station_display = station_counts[["Station Mapped", "Complaint Count"]].sort_values("Complaint Count", ascending=False).head(18).copy()
-            station_display = station_display.rename(columns={"Station Mapped": "Station"})
-            dataframe_white(station_display, height=430)
+            station_display = (
+                station_counts[["Station Mapped", "Complaint Count"]]
+                .sort_values("Complaint Count", ascending=False)
+                .head(20)
+                .rename(columns={"Station Mapped": "Station"})
+                .reset_index(drop=True)
+            )
+            try:
+                st.dataframe(
+                    station_display,
+                    use_container_width=True,
+                    height=station_panel_height,
+                    hide_index=True,
+                    column_config={
+                        "Station": st.column_config.TextColumn("Station", width="medium"),
+                        "Complaint Count": st.column_config.NumberColumn("Complaint Count", width="small", format="%d"),
+                    },
+                )
+            except Exception:
+                dataframe_white(station_display, height=station_panel_height)
+            st.markdown("</div>", unsafe_allow_html=True)
     else:
         render_plotly_chart(fig, enable_scroll_zoom=True)
 
     with st.expander("View station complaint records behind the heatmap", expanded=False):
         detail_cols = ["Main Topic", "Topic", "FLIGHT", "DATE", "A/C TYPE", "FROM", "comment (text)"]
+        for col in detail_cols:
+            if col not in work.columns:
+                work[col] = ""
         display = work[detail_cols].copy()
         display["DATE"] = pd.to_datetime(display["DATE"], errors="coerce").dt.strftime("%Y-%m-%d")
         dataframe_white(display, height=300)
 
+
 def render_complaint_flight_heatmap(topics: List[str], title: str = "Complaint by Flight"):
     """Render flight-level complaint intensity for the selected period and touchpoint(s)."""
-    if complaint_detail_df.empty:
-        return
-    required_cols = {"Topic Canonical", "Month", "FLIGHT", "Topic", "comment (text)"}
-    if not required_cols.issubset(set(complaint_detail_df.columns)):
-        st.warning("Complaint detail data is available, but required columns are missing for flight heatmap.")
-        return
-
-    work = complaint_detail_df.copy()
-    work = work[(work["Topic Canonical"].isin(topics)) & (work["Month"].isin(selected_months))].copy()
-    if "Topic" in work.columns:
-        work = work[~work["Topic"].astype(str).str.contains("commendation", case=False, na=False)].copy()
-    work = work[(work["FLIGHT"].astype(str).str.strip() != "") & (work["comment (text)"].astype(str).str.strip() != "")].copy()
+    work = _filter_complaint_detail_for_heatmap(topics, "FLIGHT")
     if work.empty:
+        st.info("No flight complaint data available for the selected filters.")
         return
 
-    # Keep the heatmap executive-readable: focus on flights with the highest complaint intensity.
     top_n = 18 if not IS_MOBILE_MODE else 10
     top_flights = (
         work.groupby("FLIGHT", as_index=False)
@@ -5914,13 +6204,10 @@ def render_complaint_flight_heatmap(topics: List[str], title: str = "Complaint b
         .head(top_n)["FLIGHT"].tolist()
     )
     work = work[work["FLIGHT"].isin(top_flights)].copy()
-    month_order = sorted(work["Month"].dropna().unique().tolist(), key=lambda x: pd.to_datetime(str(x) + "-01", errors="coerce"))
-    flight_order = (
-        work.groupby("FLIGHT")
-        .size()
-        .sort_values(ascending=True)
-        .index.tolist()
-    )
+    month_order = sorted(work["Month"].dropna().astype(str).unique().tolist(), key=lambda x: pd.to_datetime(str(x) + "-01", errors="coerce"))
+    if not month_order:
+        month_order = sorted([str(m) for m in selected_months], key=lambda x: pd.to_datetime(str(x) + "-01", errors="coerce"))
+    flight_order = work.groupby("FLIGHT").size().sort_values(ascending=True).index.tolist()
     matrix = (
         work.groupby(["FLIGHT", "Month"], as_index=False)
         .size()
@@ -5930,16 +6217,17 @@ def render_complaint_flight_heatmap(topics: List[str], title: str = "Complaint b
         .fillna(0)
     )
     if matrix.empty:
+        st.info("No flight complaint data available for the selected filters.")
         return
 
-    month_labels = [pd.to_datetime(m + "-01", errors="coerce").strftime("%b %Y") if pd.notna(pd.to_datetime(m + "-01", errors="coerce")) else m for m in month_order]
+    month_labels = [pd.to_datetime(str(m) + "-01", errors="coerce").strftime("%b %Y") if pd.notna(pd.to_datetime(str(m) + "-01", errors="coerce")) else str(m) for m in month_order]
     fig = go.Figure(
         data=go.Heatmap(
             z=matrix.values,
             x=month_labels,
             y=matrix.index.tolist(),
             colorscale=[[0, "#FFFFFF"], [0.25, THAI_GOLD_SOFT], [0.65, DASHING_YELLOW], [1, FLAMBOYANT_PINK]],
-            colorbar=dict(title="Count", thickness=10, len=0.72, tickfont=dict(size=9)),
+            colorbar=dict(title=dict(text="Count", font=dict(size=10, color=TEXT_MAIN)), thickness=10, len=0.72, tickfont=dict(size=9, color=TEXT_MAIN)),
             hovertemplate="<b>Flight %{y}</b><br>Month: %{x}<br>Complaints: %{z:,.0f}<extra></extra>",
         )
     )
@@ -5958,6 +6246,9 @@ def render_complaint_flight_heatmap(topics: List[str], title: str = "Complaint b
 
     with st.expander("View complaint records behind the flight heatmap", expanded=False):
         detail_cols = ["Main Topic", "Topic", "FLIGHT", "DATE", "A/C TYPE", "FROM", "comment (text)"]
+        for col in detail_cols:
+            if col not in work.columns:
+                work[col] = ""
         display = work[detail_cols].copy()
         display["DATE"] = pd.to_datetime(display["DATE"], errors="coerce").dt.strftime("%Y-%m-%d")
         dataframe_white(display, height=300)
